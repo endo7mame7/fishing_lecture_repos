@@ -46,10 +46,7 @@ const App = {
   go(name, opts = {}) {
     if (this.cleanup) { try { this.cleanup(); } catch (e) {} }
     this.cleanup = null;
-    this.timers.forEach(id => clearTimeout(id));
-    this.timers.clear();
-    this.rafs.forEach(h => cancelAnimationFrame(h.id));
-    this.rafs.clear();
+    this.stopAll();
 
     this.stage.className = 'stage';
     this.stage.innerHTML = '';
@@ -59,6 +56,14 @@ const App = {
     document.querySelector('#guide').classList.toggle('clerk', !!scene.clerk);
     this.setStep(scene.step);
     this.cleanup = scene.enter(opts) || null;
+  },
+
+  // シーンの タイマーと まいフレームの しょりを ぜんぶ とめる
+  stopAll() {
+    this.timers.forEach(id => clearTimeout(id));
+    this.timers.clear();
+    this.rafs.forEach(h => cancelAnimationFrame(h.id));
+    this.rafs.clear();
   },
 
   setStep(i) {

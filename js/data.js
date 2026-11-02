@@ -237,7 +237,7 @@ function pickFish() {
 // つった きろく（ブラウザに ほぞん）
 const Save = {
   KEY: 'fishing-lecture-save-v1',
-  data: { caught: {}, tutorialDone: false, loadout: null },
+  data: { caught: {}, tutorialDone: false, loadout: null, prepDone: {} },
   load() {
     try {
       const raw = localStorage.getItem(this.KEY);

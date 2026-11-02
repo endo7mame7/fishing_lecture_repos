@@ -245,126 +245,10 @@ Scenes.travel = {
       car.style.left = (p * 100) + '%';
       if (p > 0.85) lbl.textContent = 'もうすぐ つくよ!';
       if (t >= endAt) {
-        App.go('bait');
+        App.go('prep');
         return false;
       }
     });
-  },
-};
-
-/* ───────── 3. じゅんび（エサ・ルアーを つける） ───────── */
-function targetArt(kind) {
-  if (kind === 'basket') {
-    return `
-<svg viewBox="0 0 120 230" class="hook-svg" aria-hidden="true">
-  <line x1="60" y1="0" x2="60" y2="110" stroke="#555" stroke-width="2"/>
-  <rect x="25" y="110" width="70" height="80" rx="10" fill="#ffb74d" stroke="#e08a1e" stroke-width="4"/>
-  <path d="M25 135 H95 M25 160 H95 M48 110 V190 M72 110 V190" stroke="#e08a1e" stroke-width="3"/>
-  <line x1="60" y1="190" x2="60" y2="225" stroke="#555" stroke-width="2"/>
-</svg>`;
-  }
-  if (kind === 'snap') {
-    return `
-<svg viewBox="0 0 120 230" class="hook-svg" aria-hidden="true">
-  <line x1="60" y1="0" x2="60" y2="120" stroke="#b7e3f7" stroke-width="4"/>
-  <circle cx="60" cy="126" r="7" fill="none" stroke="#8a949d" stroke-width="4"/>
-  <path d="M60 133 q-20 6 -20 34 q0 28 20 34 q20 -6 20 -34 q0 -28 -20 -34" stroke="#8a949d" stroke-width="5" fill="none"/>
-</svg>`;
-  }
-  return Art.hook();
-}
-
-Scenes.bait = {
-  step: 1,
-  enter() {
-    if (!Loadout.ready()) { App.go('shop'); return; }
-    const b = ITEM_BY_ID[Loadout.gear.bait];
-    const kind = b.id === 'amiebi' ? 'basket' : b.id === 'jig' ? 'snap' : 'hook';
-    const label = { basket: 'コマセカゴ', snap: 'スナップ', hook: 'はり' }[kind];
-    const verb = kind === 'basket' ? `${b.name}を カゴに つめよう!` : kind === 'snap' ? `${b.name}を スナップに つけよう!` : `${b.name}を はりに つけよう!`;
-    App.say(`${verb}\n${b.name}を ゆびで うごかして、${label}まで もっていってね。`);
-
-    const wrap = h(`
-      <div class="bait">
-        <div class="bait-left">
-          <div class="worm drag-item">${Art.gear(b.art)}</div>
-          <div class="cup">${b.name}</div>
-        </div>
-        <div class="bait-arrow">👉</div>
-        <div class="bait-right">
-          <div class="hook-box">${targetArt(kind)}<div class="hook-target"></div></div>
-          <div class="hook-lbl">${label}</div>
-        </div>
-      </div>`);
-    App.stage.appendChild(wrap);
-
-    const worm = wrap.querySelector('.worm');
-    const target = wrap.querySelector('.hook-target');
-    const hookBox = wrap.querySelector('.hook-box');
-    let drag = null;
-    let done = false;
-    let pos = { x: 0, y: 0 };
-
-    const center = el => {
-      const r = el.getBoundingClientRect();
-      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
-    };
-    const moveTo = (dx, dy, smooth) => {
-      pos = { x: dx, y: dy };
-      worm.style.transition = smooth ? 'transform .45s ease' : 'none';
-      worm.style.transform = `translate(${dx}px, ${dy}px)`;
-    };
-    const snapToTarget = () => {
-      const a = center(worm), t = center(target);
-      moveTo(pos.x + (t.x - a.x), pos.y + (t.y - a.y), true);
-    };
-
-    const success = () => {
-      done = true;
-      worm.classList.add('attached');
-      hookBox.classList.add('baited');
-      wrap.querySelector('.bait-arrow').textContent = '✨';
-      Sfx.good();
-      const msg = kind === 'basket'
-        ? 'つめられたね! カゴを ふると アミエビが でて、さかなが あつまってくるよ。'
-        : kind === 'snap'
-          ? 'つけられたね! スナップは しっかり とじてね。ルアーの はりも とがっているから きをつけて。'
-          : 'つけられたね! これで さかなが よってくるよ。\nほんとうの はりは とがっているから、おとなの ひとと いっしょに つけようね。';
-      App.say(msg, 'wow');
-      App.setControls(App.btn('うみへ いこう ▶', { cls: 'big pulse green', onClick: () => App.go('fishing') }));
-    };
-
-    worm.addEventListener('pointerdown', e => {
-      if (done) return;
-      worm.setPointerCapture(e.pointerId);
-      drag = { sx: e.clientX - pos.x, sy: e.clientY - pos.y, moved: 0, ox: pos.x, oy: pos.y };
-      worm.classList.add('dragging');
-      Sfx.pop();
-    });
-    worm.addEventListener('pointermove', e => {
-      if (!drag) return;
-      const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
-      drag.moved = Math.max(drag.moved, Math.hypot(dx - drag.ox, dy - drag.oy));
-      moveTo(dx, dy, false);
-    });
-    const end = () => {
-      if (!drag) return;
-      const moved = drag.moved;
-      drag = null;
-      worm.classList.remove('dragging');
-      const a = center(worm), t = center(target);
-      const near = Math.hypot(a.x - t.x, a.y - t.y) < 110;
-      if (near || moved < 12) {
-        // ちかくで はなした・タップだけ → じどうで くっつく
-        snapToTarget();
-        App.after(480, success);
-      } else {
-        moveTo(0, 0, true);
-        App.say(`おしい! もうすこし ${label}の ちかくまで もっていってね。`, 'think');
-      }
-    };
-    worm.addEventListener('pointerup', end);
-    worm.addEventListener('pointercancel', end);
   },
 };
 
@@ -822,7 +706,7 @@ Scenes.caught = {
         wrap.appendChild(h('<div class="medal">🏅 はじめての つり せいこう!<br>きみは つり めいじん!</div>'));
       }
       App.setControls(
-        App.btn('🎣 もういちど つる', { cls: 'big pulse green', onClick: () => App.go('bait') }),
+        App.btn('🎣 もういちど つる', { cls: 'big pulse green', onClick: () => App.go('prep', { only: 'bait' }) }),
         App.btn('🏪 どうぐを かえる', { cls: '', onClick: () => App.go('shop') }),
         App.btn('📖 ずかん', { cls: 'blue', onClick: () => App.go('zukan') }),
         App.btn('🏠', { cls: 'gray', onClick: () => App.go('title') }),
