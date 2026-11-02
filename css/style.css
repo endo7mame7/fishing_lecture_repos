@@ -435,7 +435,9 @@ button { font-family: inherit; font-weight: 800; color: inherit; cursor: pointer
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 
-/* ── エサの じゅんび: がめんに おさまるように（#4） ── */
+/* ── エサの じゅんび: がめんに おさまるように（#4）
+   Safari は「たかさだけ きめて はばは じどう」の SVG を はば 0 に することが あるので、
+   ラッパーに aspect-ratio で たて・よこ りょうほうの おおきさを きめる（#7） ── */
 .prep-area { container-type: size; }
 .prep-area .bait {
   display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr);
@@ -445,21 +447,24 @@ button { font-family: inherit; font-weight: 800; color: inherit; cursor: pointer
   height: 100%; width: 100%; min-height: 0; min-width: 0;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
 }
-.prep-area .bait-item { width: auto; height: min(55%, 190px); max-width: 100%; display: flex; align-items: center; justify-content: center; }
-.prep-area .bait-item svg, .prep-area .bait-item .gear-svg { height: 100%; width: auto; max-width: 100%; }
-.prep-area .bait-item > div { height: 100%; display: flex; align-items: center; }
-.prep-area .hook-box { flex: 1 1 0; min-height: 0; height: auto; max-height: 300px; display: flex; justify-content: center; }
-.prep-area .hook-box > svg { height: 100%; width: auto; max-width: 100%; }
+.prep-area .bait-item { --ar: 1; height: min(50%, 180px); aspect-ratio: var(--ar); width: auto; max-width: 100%; flex: none; }
+.prep-area .bait-item:has(.okiami) { --ar: 140 / 90; }
+.prep-area .bait-item:has(.jig) { --ar: 140 / 80; }
+.prep-area .bait-item > div { width: 100%; height: 100%; display: block; }
+.prep-area .bait-item svg, .prep-area .bait-item .gear-svg { width: 100%; height: 100%; display: block; }
+.prep-area .hook-box { flex: 1 1 0; min-height: 0; max-height: 300px; height: auto; aspect-ratio: 120 / 230; width: auto; max-width: 100%; display: block; }
+.prep-area .hook-box:has(.bowl-svg) { aspect-ratio: 1; }
+.prep-area .hook-box > svg { width: 100%; height: 100%; display: block; }
 .prep-area .cup { width: auto; max-width: 100%; padding: 6px 16px; font-size: 16px; }
 .prep-area .hook-lbl { font-size: 16px; }
 .prep-area .basket-wrap { height: 100%; justify-content: center; }
-.prep-area .basket-svg { width: auto; height: min(75%, 180px); }
+.prep-area .basket-svg { height: min(75%, 180px); aspect-ratio: 100 / 120; width: auto; }
 .prep-area .bait-arrow { animation: nudge 1s ease-in-out infinite; transform: none; }
 
 /* たてながの とき: うえに エサ、したに はり */
 @container (aspect-ratio < 1) {
   .prep-area .bait { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto minmax(0, 1.3fr); }
-  .prep-area .bait-item { height: min(65%, 160px); }
+  .prep-area .bait-item { height: min(60%, 150px); }
   .prep-area .bait-arrow { transform: rotate(90deg); animation: none; font-size: 32px; }
 }
 
@@ -507,3 +512,19 @@ button { font-family: inherit; font-weight: 800; color: inherit; cursor: pointer
 .junk-ico { font-size: clamp(90px, 18vw, 160px); line-height: 1.1; animation: jump .9s ease-out; }
 .junk-ico.to-bucket { animation: bucket 1s ease-in forwards; }
 .zjunk { font-size: .6em; background: #e6f4ff; border-radius: 999px; padding: 2px 10px; vertical-align: middle; }
+
+/* ── つりかたごとの あそびかた（#8 #10） ── */
+.depth-gauge { position: absolute; left: 10px; top: 14%; bottom: 10%; width: 54px; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.depth-gauge[hidden] { display: none; }
+.dg-lbl { font-size: 12px; background: rgba(255, 255, 255, .85); border-radius: 999px; padding: 0 8px; }
+.dg-col { position: relative; flex: 1; width: 14px; border-radius: 999px; background: linear-gradient(#bfe6ff, #1a68b0); border: 2px solid #fff; }
+.dg-fish, .dg-hook { position: absolute; transform: translateY(-50%); white-space: nowrap; line-height: 1; }
+.dg-fish { left: -22px; font-size: 18px; }
+.dg-hook { left: 18px; font-size: 12px; background: #ffd54a; border-radius: 999px; padding: 1px 6px; }
+.dg-hook::before { content: ''; position: absolute; left: -12px; top: 50%; width: 12px; border-top: 2px solid #ffd54a; }
+.chum { fill: #f39bb0; animation: chum 2.6s ease-out forwards; }
+@keyframes chum { from { transform: translate(0, 0); opacity: .9; } to { transform: translate(var(--dx), var(--dy)); opacity: 0; } }
+.hold-ctl { touch-action: none; }
+.hold-ctl.holding { transform: translateY(5px); box-shadow: 0 1px 0 rgba(0, 0, 0, .2); filter: brightness(1.08); }
+.btn small { font-size: .6em; opacity: .85; }
+.badge-multi { position: absolute !important; bottom: 14px; right: 14px; background: #ff4f7b; color: #fff; border-radius: 999px; padding: 6px 16px; font-size: 20px; transform: rotate(-6deg); }
