@@ -235,7 +235,10 @@ const Art = (() => {
     <g class="w-lure"><path d="M-14 0 Q-2 -8 12 0 Q-2 8 -14 0 Z" fill="#9fc4e6" stroke="#5c7a96" stroke-width="1.5"/><circle cx="7" cy="-1" r="1.6" fill="#223"/></g>
   </g>
 
-  <rect y="243" width="800" height="207" fill="#1f78c4" opacity=".55"/>
+  <g id="school"></g>
+  <rect id="overlay" y="243" width="800" height="207" fill="#1f78c4" opacity=".55"/>
+  <g id="spot"></g>
+  <g id="aim" opacity="0"><ellipse cx="0" cy="0" rx="26" ry="8" fill="none" stroke="#ffd54a" stroke-width="4"/><path d="M0 -14 L-8 -30 H8 Z" fill="#ffd54a"/></g>
   <g class="waves" stroke="#fff" stroke-opacity=".55" stroke-width="3" fill="none" stroke-linecap="round">
     <path d="M300 275 q10 -6 20 0 t20 0"/>
     <path d="M520 300 q10 -6 20 0 t20 0"/>
@@ -246,6 +249,7 @@ const Art = (() => {
 
   <path id="line" d="" stroke="#3c3c3c" stroke-width="1.6" fill="none" opacity=".85"/>
   <g id="fx"></g>
+  <g id="jumper"></g>
 
   <rect x="40" y="232" width="14" height="140" fill="#6b4529"/>
   <rect x="150" y="232" width="14" height="140" fill="#6b4529"/>

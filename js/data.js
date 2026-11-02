@@ -185,7 +185,20 @@ const FISH = [
   { id: 'tai',    name: 'マダイ', body: '#ec6f84', belly: '#fbd6dc', fin: '#d95870', pattern: 'spots',   patColor: '#7fd3ff', len: 1.0,  h: 1.05, weight: 4, rare: true,
     fact: '「めでたい」の タイ! おいわいの ひに たべる さかなだよ。すごい!' },
 ];
+// さかなの おおきさ（センチ）
+const FISH_SIZE = {
+  haze: [8, 15], kisu: [12, 25], karei: [15, 35], aji: [12, 30], iwashi: [10, 20], saba: [20, 40], mebaru: [12, 25],
+  kasago: [10, 25], kamasu: [20, 40], ainame: [20, 40], kurodai: [25, 50], suzuki: [30, 70], tai: [20, 50],
+};
+FISH.forEach(f => { f.size = FISH_SIZE[f.id]; });
 const FISH_BY_ID = Object.fromEntries(FISH.map(f => [f.id, f]));
+
+// ときどき つれる ごみ（うみを きれいに しよう）
+const JUNK = [
+  { id: 'boot', name: 'ながぐつ', icon: '👢', say: 'ながぐつが つれた! うみに おちている ごみだね。もちかえって すてよう。' },
+  { id: 'can', name: 'あきかん', icon: '🥫', say: 'あきかんが つれた! ごみを ひろって、うみを きれいに したね。' },
+  { id: 'bag', name: 'ビニールぶくろ', icon: '🛍️', say: 'ビニールぶくろは、ウミガメが クラゲと まちがえて たべちゃうことも あるんだ。ひろえて えらい!' },
+];
 
 /* ───────── いまの どうぐ ───────── */
 const Loadout = {
@@ -237,7 +250,7 @@ function pickFish() {
 // つった きろく（ブラウザに ほぞん）
 const Save = {
   KEY: 'fishing-lecture-save-v1',
-  data: { caught: {}, tutorialDone: false, loadout: null, prepDone: {} },
+  data: { caught: {}, best: {}, junk: 0, tutorialDone: false, loadout: null, prepDone: {} },
   load() {
     try {
       const raw = localStorage.getItem(this.KEY);

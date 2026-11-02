@@ -1,8 +1,8 @@
 /* つりばでの じゅんび ミニゲーム
-   1. さお（のばす・ガイドを そろえる・いとを とおす・いとを だす）
-   2. しかけ（クリンチノットで スナップサルカンに むすぶ）
-   3. みずくみ（ロープつき バケツ）
-   4. エサ（つりかたで かわる）
+   さお・しかけ・みずくみの どれか 1つ（ランダム）→ エサ（つりかたで かわる）
+   - さお: のばす・ガイドを そろえる・いとを とおす・いとを だす
+   - しかけ: クリンチノットで スナップサルカンに むすぶ
+   - みずくみ: ロープつき バケツ
 */
 
 const PREP_TASKS = [
@@ -17,7 +17,14 @@ Scenes.prep = {
   step: 1,
   enter(opts) {
     if (!Loadout.ready()) { App.go('shop'); return; }
-    const list = opts.only ? PREP_TASKS.filter(t => t.id === opts.only) : PREP_TASKS;
+    // さお・しかけ・みずくみから ランダムで 1つ ＋ エサつけ（#5）
+    let list;
+    if (opts.only) list = PREP_TASKS.filter(t => t.id === opts.only);
+    else {
+      const pool = PREP_TASKS.filter(t => t.id !== 'bait');
+      const pick = opts.task ? pool.find(t => t.id === opts.task) : pool[Math.floor(Math.random() * pool.length)];
+      list = [pick, PREP_TASKS.find(t => t.id === 'bait')];
+    }
     let i = 0;
 
     const next = () => {
