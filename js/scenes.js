@@ -17,7 +17,7 @@ Scenes.title = {
         </div>
       </div>`;
     const again = Loadout.ready()
-      ? App.btn('🎣 おなじ どうぐで つる', { cls: 'green', onClick: () => App.go('bait') })
+      ? App.btn('🎣 おなじ どうぐで つる', { cls: 'green', onClick: () => App.go('travel') })
       : null;
     App.setControls(
       App.btn('🏪 つりぐやさんへ', { cls: 'big pulse', onClick: () => App.go('shop') }),
@@ -145,7 +145,7 @@ Scenes.check = {
       App.say(`ばっちり! これは「${M.name}」の どうぐだね。\n${M.desc}\nいってらっしゃい!`, 'wow');
       App.setControls(
         App.btn('◀ えらびなおす', { cls: 'gray', onClick: () => App.go('shop') }),
-        App.btn('🌊 うみへ しゅっぱつ ▶', { cls: 'big green pulse', onClick: () => App.go('bait') }),
+        App.btn('🌊 うみへ しゅっぱつ ▶', { cls: 'big green pulse', onClick: () => App.go('travel') }),
       );
     } else {
       Sfx.oops();
@@ -162,6 +162,93 @@ Scenes.check = {
         onClick: () => App.go('shop', { shelf: SHELVES.indexOf(first.shelf), fix: true, hint: first.best.id }),
       }));
     }
+  },
+};
+
+/* ───────── うみへ いどう（まめちしき） ───────── */
+Scenes.travel = {
+  step: 1,
+  enter() {
+    const DUR = 10;
+    const { type, item } = pickTip();
+    let body;
+    if (type === 'quiz') {
+      body = `
+        <div class="tip-q">${item.q}</div>
+        <div class="tip-choices">
+          ${shuffle([{ ...item.a, ok: true }, { ...item.b, ok: false }]).map(o =>
+            `<button class="tip-choice" data-ok="${o.ok}"><span class="ico">${o.icon}</span><span>${o.label}</span><span class="mark"></span></button>`).join('')}
+        </div>`;
+    } else {
+      body = `
+        <div class="tip-body">
+          <div class="tip-ico">${Art.icon(item)}</div>
+          <div><div class="tip-name">${item.name}</div><div class="tip-text">${item.say}</div></div>
+        </div>`;
+    }
+    const wrap = h(`
+      <div class="travel">
+        <div class="road">
+          <div class="road-fill"></div>
+          <span class="car">🚗</span>
+          <span class="goal">🌊</span>
+        </div>
+        <div class="travel-lbl">うみへ いどうちゅう…</div>
+        <div class="tip tip-${type}">
+          <div class="tip-tag">${TIP_TAGS[type]}</div>
+          ${body}
+        </div>
+      </div>`);
+    App.stage.appendChild(wrap);
+    const fill = wrap.querySelector('.road-fill');
+    const car = wrap.querySelector('.car');
+    const lbl = wrap.querySelector('.travel-lbl');
+
+    let endAt = DUR;
+    let answered = false;
+    const reveal = picked => {
+      answered = true;
+      wrap.querySelectorAll('.tip-choice').forEach(b => {
+        b.disabled = true;
+        const ok = b.dataset.ok === 'true';
+        if (ok) { b.classList.add('yes'); b.querySelector('.mark').textContent = '⭕'; }
+        else if (b === picked) { b.classList.add('no'); b.querySelector('.mark').textContent = '❌'; }
+      });
+    };
+
+    if (type === 'quiz') {
+      App.say(`あんぜん クイズ!\n${item.q}`);
+      wrap.querySelectorAll('.tip-choice').forEach(b => {
+        b.addEventListener('click', () => {
+          if (answered) return;
+          const ok = b.dataset.ok === 'true';
+          reveal(b);
+          if (ok) { Sfx.good(); App.say('せいかい! ' + item.a.say, 'wow'); }
+          else { Sfx.oops(); App.say(item.b.say, 'think'); }
+          endAt = Math.max(endAt, t + 5); // せつめいを きく じかん
+        });
+      });
+    } else {
+      App.say(`${TIP_TAGS[type]}。${item.name}。\n${item.say}`);
+    }
+
+    let t = 0;
+    App.loop(dt => {
+      t += dt;
+      if (type === 'quiz' && !answered && t > 6.5) {
+        reveal(null);
+        App.say(`こたえは「${item.a.label}」。\n${item.a.say}`);
+        endAt = Math.max(endAt, t + 4.5);
+      }
+      const p = Math.min(1, t / endAt);
+      fill.style.width = (p * 100) + '%';
+      car.style.left = (p * 100) + '%';
+      if (p > 0.85) lbl.textContent = 'もうすぐ つくよ!';
+      if (t >= endAt) {
+        App.go('bait');
+        return false;
+      }
+    });
   },
 };
 
@@ -812,7 +899,7 @@ Scenes.zukan = {
     App.setControls(
       App.btn('🎣 つりに いく', {
         cls: 'big green',
-        onClick: () => (Loadout.ready() ? App.go('bait') : App.go('shop')),
+        onClick: () => (Loadout.ready() ? App.go('travel') : App.go('shop')),
       }),
       App.btn('🏠 もどる', { cls: 'gray', onClick: () => App.go('title') }),
     );

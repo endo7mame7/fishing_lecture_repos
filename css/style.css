@@ -220,6 +220,34 @@ button { font-family: inherit; font-weight: 800; color: inherit; cursor: pointer
 .n-ico { width: 40px; height: 40px; flex: none; }
 .n-ico .emoji { font-size: 32px; }
 
+/* ── うみへ いどう ── */
+.travel { width: 100%; height: 100%; padding: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.road { position: relative; width: min(640px, 86%); height: 22px; border-radius: 999px; background: #d9d2c4; margin: 26px 0 0; }
+.road-fill { height: 100%; width: 0; border-radius: 999px; background: linear-gradient(90deg, #ffd54a, #43b581); }
+.car { position: absolute; top: -34px; left: 0; font-size: 40px; line-height: 1; transform: translateX(-50%) scaleX(-1); animation: hop .4s ease-in-out infinite alternate; }
+.goal { position: absolute; right: -40px; top: -12px; font-size: 38px; }
+.travel-lbl { font-size: 16px; color: #8a7d72; }
+.tip { width: min(680px, 100%); background: #fff; border-radius: 24px; padding: 16px 20px 20px; box-shadow: 0 5px 0 #eadcc4; border: 4px solid #f1e6d2; position: relative; animation: pop .4s; }
+.tip-tag { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); white-space: nowrap; color: #fff; border-radius: 999px; padding: 3px 16px; font-size: 16px; }
+.tip-quiz .tip-tag { background: var(--red); }
+.tip-need .tip-tag { background: var(--orange); }
+.tip-handy .tip-tag { background: var(--blue); }
+.tip-trivia .tip-tag { background: var(--green); }
+.tip-body { display: flex; align-items: center; gap: 16px; padding-top: 6px; }
+.tip-ico { width: clamp(70px, 14vw, 120px); height: clamp(70px, 14vw, 120px); flex: none; display: flex; align-items: center; justify-content: center; }
+.tip-ico .emoji { font-size: clamp(56px, 11vw, 96px); }
+.tip-name { font-size: clamp(20px, 3.2vw, 30px); color: #ff7a2a; }
+.tip-text { font-size: clamp(16px, 2.4vw, 22px); line-height: 1.5; font-weight: 500; }
+.tip-q { text-align: center; font-size: clamp(22px, 3.6vw, 34px); padding: 8px 0 12px; }
+.tip-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tip-choice { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px; border: 4px solid #f1e6d2; border-radius: 18px; background: #fffaf0; font-size: clamp(16px, 2.4vw, 22px); box-shadow: 0 4px 0 #eadcc4; }
+.tip-choice .ico { font-size: clamp(40px, 7vw, 64px); line-height: 1.1; }
+.tip-choice .mark { position: absolute; top: 4px; right: 8px; font-size: 30px; }
+.tip-choice.yes { border-color: var(--green); background: #e6f8ee; }
+.tip-choice.no { opacity: .6; }
+.tip-choice:disabled { cursor: default; }
+@keyframes hop { from { margin-top: 0; } to { margin-top: -4px; } }
+
 /* ── やくそく ── */
 .quiz { width: 100%; height: 100%; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .quiz-num { align-self: center; background: var(--blue); color: #fff; border-radius: 999px; padding: 4px 18px; font-size: 18px; }
