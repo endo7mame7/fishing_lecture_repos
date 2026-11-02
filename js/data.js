@@ -3,7 +3,6 @@
 // すすみぐあい バー
 const STEPS = [
   { icon: '🏪', label: 'つりぐや' },
-  { icon: '🤝', label: 'やくそく' },
   { icon: '🪝', label: 'じゅんび' },
   { icon: '🎣', label: 'なげる' },
   { icon: '👀', label: 'まつ' },
@@ -21,49 +20,47 @@ const METHODS = [
     desc: 'おもりの ついた しかけを かるく なげて、すなの そこに いる さかなを ねらうよ。',
     cast: 'throw', indicator: 'rodtip',
     fish: ['kisu', 'haze', 'karei', 'tai'],
-    gear: { rod: 'choinage_rod', line: 'nylon3', rig: 'tenbin', bait: 'aoisome' },
+    gear: { rod: 'choinage_rod', rig: 'tenbin', bait: 'aoisome' },
   },
   {
     id: 'sabiki', name: 'サビキづり', art: 'sabiki',
     desc: 'ちいさな はりが たくさん ついた しかけを あしもとに おとして、むれで およぐ さかなを いっぺんに つるよ。',
     cast: 'drop', indicator: 'rodtip',
     fish: ['aji', 'iwashi', 'saba'],
-    gear: { rod: 'iso_rod', line: 'nylon3', rig: 'sabiki', bait: 'amiebi' },
+    gear: { rod: 'iso_rod', rig: 'sabiki', bait: 'amiebi' },
   },
   {
     id: 'uki', name: 'ウキづり', art: 'uki_shikake',
     desc: 'ウキを うかべて まつよ。ウキが ぐーっと しずんだら さかなの あいず!',
     cast: 'throw', indicator: 'bobber',
     fish: ['mebaru', 'aji', 'kurodai', 'tai'],
-    gear: { rod: 'iso_rod', line: 'nylon2', rig: 'uki_shikake', bait: 'okiami' },
+    gear: { rod: 'iso_rod', rig: 'uki_shikake', bait: 'okiami' },
   },
   {
     id: 'lure', name: 'ルアーづり', art: 'jig',
     desc: 'えさの かわりに さかなの かたちの ルアーを なげて、まきながら さかなを さそうよ。',
     cast: 'throw', indicator: 'rodtip',
     fish: ['kamasu', 'saba', 'suzuki'],
-    gear: { rod: 'lure_rod', line: 'pe', rig: 'leader', bait: 'jig' },
+    gear: { rod: 'lure_rod', rig: 'leader', bait: 'jig' },
   },
   {
     id: 'saguri', name: 'さぐりづり', art: 'burakuri',
     desc: 'あしもとの いわや ブロックの すきまに しかけを そっと おとして、かくれている さかなを ねらうよ。',
     cast: 'drop', indicator: 'rodtip',
     fish: ['kasago', 'mebaru', 'ainame'],
-    gear: { rod: 'ana_rod', line: 'nylon3', rig: 'burakuri', bait: 'aoisome' },
+    gear: { rod: 'ana_rod', rig: 'burakuri', bait: 'aoisome' },
   },
 ];
 const METHOD_BY_ID = Object.fromEntries(METHODS.map(m => [m.id, m]));
 
 /* ───────── つりぐやさんの たな ─────────
-   type: one  = 1つ えらぶ（つりかたに あうか チェック）
-         must = ok の ものを ぜんぶ えらぶ
-         free = すきなだけ えらぶ（えらばなくても いい）
+   さお・しかけ・エサの 3つを えらぶ。くみあわせは レジで てんいんさんが チェックする
    art が あれば え（SVG）、なければ icon（えもじ）を つかう
 */
 const SHELVES = [
   {
     id: 'rod', title: 'ロッド・リール', type: 'one',
-    say: 'まずは さおと リール。つりかたに あう さおを えらんでね。',
+    say: 'まずは さお。リールが ついた さおを 1ぽん えらんでね。',
     items: [
       { id: 'choinage_rod', art: 'choinage_rod', name: 'ちょいなげロッド', say: 'ちょいなげロッド。ふつうの ながさで、おもりを かるく なげるのに ちょうど いい さおだよ。' },
       { id: 'iso_rod', art: 'iso_rod', name: 'いそざお', say: 'いそざお。ながくて やわらかい さお。ウキづりや サビキづりに つかうよ。' },
@@ -72,17 +69,8 @@ const SHELVES = [
     ],
   },
   {
-    id: 'line', title: 'ライン（いと）', type: 'one',
-    say: 'つぎは リールに まく いと、ラインだよ。',
-    items: [
-      { id: 'nylon3', art: 'nylon3', name: 'ナイロン 3ごう', say: 'ナイロンライン 3ごう。やわらかくて つかいやすい、ふつうの ふとさの いと。いろんな つりに つかえるよ。' },
-      { id: 'nylon2', art: 'nylon2', name: 'ナイロン 2ごう', say: 'ナイロンライン 2ごう。ほそめの いと。ウキが しずみやすくて、さかなに きづかれにくいよ。' },
-      { id: 'pe', art: 'pe', name: 'PEライン', say: 'PEライン。ほそいのに とっても つよい いと。ルアーを とおくまで とばせるよ。' },
-    ],
-  },
-  {
     id: 'rig', title: 'しかけ', type: 'one',
-    say: 'こんどは しかけ。いとの さきに つける ものだよ。',
+    say: 'つぎは しかけ。いとの さきに つける ものだよ。',
     items: [
       { id: 'tenbin', art: 'tenbin', name: 'てんびん しかけ', say: 'てんびん しかけ。おもりで とおくへ とばして、すなの うえで えさを まつよ。ちょいなげ よう。' },
       { id: 'sabiki', art: 'sabiki', name: 'サビキ しかけ', say: 'サビキ しかけ。ちいさな はりが たくさん。むれの さかなが いっぺんに かかるよ。' },
@@ -101,64 +89,11 @@ const SHELVES = [
       { id: 'jig', art: 'jig', name: 'メタルジグ', say: 'メタルジグ。きらきら ひかる きんぞくの ルアー。さかなが ちいさな さかなと まちがえて たべにくるよ。' },
     ],
   },
-  {
-    id: 'safety', title: 'みを まもる もの', type: 'must',
-    say: 'みを まもる どうぐも わすれずに! ひつような ものを ぜんぶ えらんでね。',
-    items: [
-      { id: 'jacket', icon: '🦺', name: 'ライフジャケット', ok: true, say: 'ライフジャケット! みずに おちても からだが うくよ。つりでは かならず きようね。' },
-      { id: 'hat', icon: '🧢', name: 'ぼうし', ok: true, say: 'ぼうし! おひさまから あたまを まもるよ。なげた しかけが あたっても あんしん。' },
-      { id: 'ukiwa', icon: '🛟', name: 'うきわ', ok: false, say: 'うきわは なみで ながされちゃうし、すぐ ぬげちゃう。ライフジャケットの かわりには ならないよ。' },
-    ],
-  },
-  {
-    id: 'extra', title: 'あると べんりな もの', type: 'free',
-    say: 'あると べんりな ものだよ。ほしい ものを えらんでね。えらばなくても だいじょうぶ。',
-    items: [
-      { id: 'cooler', art: 'cooler', name: 'クーラーボックス', say: 'クーラーボックス。つった さかなを つめたい まま もってかえれるよ。' },
-      { id: 'ice', icon: '🧊', name: 'こおり', say: 'こおり。クーラーボックスに いれて、さかなを ひやすよ。' },
-      { id: 'grip', art: 'grip', name: 'フィッシュグリップ', say: 'フィッシュグリップ。とげの ある さかなも、てを けがせずに つかめるよ。' },
-      { id: 'scissors', icon: '✂️', name: 'ハサミ', say: 'ハサミ。からまった いとを きるときに つかうよ。' },
-      { id: 'plier', art: 'plier', name: 'プライヤー', say: 'プライヤー。さかなの くちから はりを はずすときに つかうよ。' },
-      { id: 'bucket', icon: '🪣', name: 'みずくみバケツ', say: 'みずくみバケツ。うみの みずを くんで、てを ぬらしたり さかなを いれたりするよ。' },
-      { id: 'towel', art: 'towel', name: 'タオル', say: 'タオル。ぬれた てを ふくよ。' },
-      { id: 'glasses', icon: '🕶️', name: 'へんこう サングラス', say: 'へんこう サングラス。みずの ぎらぎらが きえて、みずの なかが よく みえるよ。めも まもってくれる。' },
-      { id: 'game', icon: '🎮', name: 'ゲームき', ok: false, say: 'ゲームは おやすみ。つりの ときは しかけを みていようね。' },
-    ],
-  },
 ];
 const ITEM_BY_ID = Object.fromEntries(SHELVES.flatMap(s => s.items.map(i => [i.id, i])));
 
-// ステップ2: あんぜんの やくそく（a が せいかい）
-const SAFETY = [
-  {
-    q: 'つりには だれと いく?',
-    a: { icon: '👪', label: 'おとなと いっしょ', say: 'せいかい! つりは かならず おとなの ひとと いっしょに いこうね。' },
-    b: { icon: '🧒', label: 'こどもだけ', say: 'こどもだけは あぶないよ。みずの ちかくには おとなと いっしょに いこうね。' },
-  },
-  {
-    q: 'みずの ちかくでは どうする?',
-    a: { icon: '🚶', label: 'ゆっくり あるく', say: 'せいかい! みずの ちかくは すべりやすいから、ゆっくり あるこうね。' },
-    b: { icon: '🏃', label: 'はしる', say: 'はしると すべって、みずに おちちゃうかも。ゆっくり あるこうね。' },
-  },
-  {
-    q: 'みずの ちかくで きるものは?',
-    a: { icon: '🦺', label: 'ライフジャケット', say: 'せいかい! ライフジャケットを きていれば、みずに おちても からだが うくよ。' },
-    b: { icon: '👕', label: 'Tシャツだけ', say: 'Tシャツだけだと、みずに おちたとき あぶないよ。ライフジャケットを きようね。' },
-  },
-  {
-    q: 'とがった「はり」は どうする?',
-    a: { icon: '🙋', label: 'おとなに たのむ', say: 'せいかい! はりは とがっていて あぶないから、おとなの ひとに たのもうね。' },
-    b: { icon: '✊', label: 'ぎゅっと にぎる', say: 'いたたた! はりは とがっているよ。にぎっちゃ だめだよ。' },
-  },
-  {
-    q: 'さおを なげる まえに どうする?',
-    a: { icon: '👀', label: 'うしろを みる', say: 'せいかい! うしろに ひとが いないか、かならず みてから なげようね。' },
-    b: { icon: '💨', label: 'すぐ なげる', say: 'うしろに ひとが いたら、はりが ささっちゃうかも。まず うしろを みようね。' },
-  },
-];
-
 /* ───────── さかな ─────────
-   weight が おおきいほど つれやすい / rare は どうぐが ぜんぶ ぴったりの ときだけ
+   weight が おおきいほど つれやすい / rare は めったに つれない
    spiky: とげや はが あって さわるとき ちゅうい
 */
 const FISH = [
@@ -194,45 +129,41 @@ const FISH_BY_ID = Object.fromEntries(FISH.map(f => [f.id, f]));
 /* ───────── いまの どうぐ ───────── */
 const Loadout = {
   method: null,
-  gear: { rod: null, line: null, rig: null, bait: null },
-  safety: [],
-  extra: [],
+  gear: { rod: null, rig: null, bait: null },
 
-  reset(methodId) {
-    this.method = methodId;
-    this.gear = { rod: null, line: null, rig: null, bait: null };
-    this.safety = [];
-    this.extra = [];
-  },
   get m() { return METHOD_BY_ID[this.method]; },
-  has(id) { return this.extra.includes(id); },
-  // ぴったりな どうぐの かず（0〜4）
-  matchCount() {
-    if (!this.m) return 0;
-    return Object.keys(this.m.gear).filter(k => this.gear[k] === this.m.gear[k]).length;
+  picked() { return SHELVES.every(s => this.gear[s.id]); },
+
+  // えらんだ どうぐに いちばん ちかい つりかたと、ちがっている どうぐを しらべる
+  check() {
+    let best = null;
+    for (const m of METHODS) {
+      const score = SHELVES.filter(s => this.gear[s.id] === m.gear[s.id]).length
+        + (this.gear.rig === m.gear.rig ? 0.5 : 0); // しかけが あっている つりかたを ゆうせん
+      if (!best || score > best.score) best = { m, score };
+    }
+    const wrong = SHELVES
+      .filter(s => this.gear[s.id] !== best.m.gear[s.id])
+      .map(s => ({ shelf: s, picked: ITEM_BY_ID[this.gear[s.id]], best: ITEM_BY_ID[best.m.gear[s.id]] }));
+    return { method: best.m, wrong };
   },
   ready() {
-    return !!(this.method && Object.values(this.gear).every(Boolean));
+    return !!(this.m && this.picked() && this.check().wrong.length === 0);
   },
   save() {
-    Save.data.loadout = { method: this.method, gear: this.gear, safety: this.safety, extra: this.extra };
+    Save.data.loadout = { method: this.method, gear: this.gear };
     Save.write();
   },
   load() {
     const l = Save.data.loadout;
-    if (l && METHOD_BY_ID[l.method]) Object.assign(this, JSON.parse(JSON.stringify(l)));
+    if (!l || !l.gear) return;
+    SHELVES.forEach(s => { if (ITEM_BY_ID[l.gear[s.id]]) this.gear[s.id] = l.gear[s.id]; });
+    if (METHOD_BY_ID[l.method]) this.method = l.method;
   },
 };
 
-// どうぐの ぴったりさで つれる さかなが かわる
 function pickFish() {
-  const m = Loadout.m || METHODS[0];
-  const perfect = Loadout.matchCount() === 4;
-  let pool = m.fish.map(id => FISH_BY_ID[id]).filter(f => perfect || !f.rare);
-  if (Loadout.matchCount() <= 1) {
-    // どうぐが あっていないと、いちばん つれやすい さかなだけ
-    pool = [pool.reduce((a, b) => (b.weight > a.weight ? b : a))];
-  }
+  const pool = (Loadout.m || METHODS[0]).fish.map(id => FISH_BY_ID[id]);
   const total = pool.reduce((s, f) => s + f.weight, 0);
   let r = Math.random() * total;
   for (const f of pool) {
@@ -245,7 +176,7 @@ function pickFish() {
 // つった きろく（ブラウザに ほぞん）
 const Save = {
   KEY: 'fishing-lecture-save-v1',
-  data: { caught: {}, tutorialDone: false, safetyDone: false, loadout: null },
+  data: { caught: {}, tutorialDone: false, loadout: null },
   load() {
     try {
       const raw = localStorage.getItem(this.KEY);

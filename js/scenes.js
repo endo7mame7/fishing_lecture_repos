@@ -20,174 +20,77 @@ Scenes.title = {
       ? App.btn('🎣 おなじ どうぐで つる', { cls: 'green', onClick: () => App.go('bait') })
       : null;
     App.setControls(
-      App.btn('🏪 つりぐやさんへ', { cls: 'big pulse', onClick: () => App.go('method') }),
+      App.btn('🏪 つりぐやさんへ', { cls: 'big pulse', onClick: () => App.go('shop') }),
       ...(again ? [again] : []),
       App.btn('📖 ずかん', { cls: 'blue', onClick: () => App.go('zukan') }),
     );
   },
 };
 
-/* ───────── 1-a. つりかたを えらぶ ───────── */
-Scenes.method = {
-  step: 0,
-  enter() {
-    App.say('いらっしゃい! ここは つりぐやさん。\nまずは どんな つりを するか えらんでね。');
-    let sel = null;
-    const wrap = h(`<div class="methods"><div class="shop-head">🏪 どんな つりを する?</div><div class="methods-grid"></div></div>`);
-    const grid = wrap.querySelector('.methods-grid');
-    const next = App.btn('これに する ▶', {
-      cls: 'big green',
-      onClick: () => {
-        if (!sel) { App.say('つりかたを 1つ タッチしてね。', 'think'); return; }
-        if (Loadout.method !== sel) Loadout.reset(sel);
-        App.go('shop', { shelf: 0 });
-      },
-    });
-
-    METHODS.forEach(m => {
-      const names = m.fish.map(id => FISH_BY_ID[id]).filter(f => !f.rare).map(f => f.name).join('・');
-      const card = h(`
-        <button class="mcard">
-          <span class="m-ico">${Art.gear(m.art)}</span>
-          <span class="m-name">${m.name}</span>
-          <span class="m-fish">🐟 ${names}</span>
-        </button>`);
-      card.addEventListener('click', () => {
-        sel = m.id;
-        grid.querySelectorAll('.mcard').forEach(c => c.classList.toggle('selected', c === card));
-        next.classList.add('pulse');
-        Sfx.pop();
-        App.say(`${m.name}。\n${m.desc}`);
-      });
-      grid.appendChild(card);
-    });
-
-    App.stage.appendChild(wrap);
-    App.setControls(App.btn('◀', { cls: 'gray', onClick: () => App.go('title') }), next);
-  },
-};
-
-/* ───────── 1-b. つりぐやさんの たな ───────── */
+/* ───────── 1. つりぐやさん（さお・しかけ・エサを えらぶ） ─────────
+   opts.shelf: ひらく たな / opts.fix: レジから なおしに きた / opts.hint: おすすめの どうぐ */
 Scenes.shop = {
   step: 0,
+  clerk: true,
   enter(opts) {
-    if (!Loadout.method) { App.go('method'); return; }
-    const M = Loadout.m;
     let idx = opts.shelf || 0;
-
-    const shelfDone = sh => {
-      if (sh.type === 'one') return !!Loadout.gear[sh.id];
-      if (sh.type === 'must') return sh.items.filter(i => i.ok).every(i => Loadout.safety.includes(i.id));
-      return true;
-    };
+    let firstVisit = !opts.fix;
 
     const render = () => {
       const sh = SHELVES[idx];
       const wrap = h(`
         <div class="shop">
           <div class="shop-tabs">
-            ${SHELVES.map((s, i) => `<span class="tab ${i === idx ? 'now' : ''} ${shelfDone(s) && i !== idx ? 'done' : ''}">${s.title}</span>`).join('')}
+            ${SHELVES.map((s, i) => `<span class="tab ${i === idx ? 'now' : ''} ${Loadout.gear[s.id] && i !== idx ? 'done' : ''}">${i + 1}. ${s.title}</span>`).join('')}
           </div>
-          <div class="shop-head"><span class="shop-method">${M.name}</span> ${sh.title}</div>
-          <div class="shelf shelf-${sh.items.length > 6 ? 'many' : 'few'}"></div>
+          <div class="shop-head">🏪 ${sh.title}</div>
+          <div class="shelf shelf-few"></div>
         </div>`);
       const shelf = wrap.querySelector('.shelf');
-      const cards = {};
-
-      const mark = (card, text, cls) => {
-        const m = card.querySelector('.badge');
-        m.textContent = text;
-        m.className = 'badge ' + cls;
-      };
+      const cards = [];
 
       sh.items.forEach(it => {
         const card = h(`
-          <button class="gcard">
+          <button class="gcard ${Loadout.gear[sh.id] === it.id ? 'selected' : ''} ${opts.fix && opts.hint === it.id ? 'hint' : ''}">
             <span class="g-ico">${Art.icon(it)}</span>
             <span class="g-name">${it.name}</span>
-            <span class="badge"></span>
+            <span class="badge good">${Loadout.gear[sh.id] === it.id ? '✔' : ''}</span>
           </button>`);
-        cards[it.id] = card;
-
-        // すでに えらんでいる ものを ひょうじ
-        if (sh.type === 'one' && Loadout.gear[sh.id] === it.id) {
-          card.classList.add('selected');
-          const ok = M.gear[sh.id] === it.id;
-          mark(card, ok ? '◎' : '△', ok ? 'good' : 'meh');
-        }
-        if (sh.type === 'must' && Loadout.safety.includes(it.id)) { card.classList.add('selected'); mark(card, '✔', 'good'); }
-        if (sh.type === 'free' && Loadout.extra.includes(it.id)) { card.classList.add('selected'); mark(card, '✔', 'good'); }
-
         card.addEventListener('click', () => {
-          if (sh.type === 'one') {
-            Loadout.gear[sh.id] = it.id;
-            Object.values(cards).forEach(c => { c.classList.remove('selected', 'hint'); mark(c, '', ''); });
-            card.classList.add('selected');
-            const best = M.gear[sh.id];
-            if (it.id === best) {
-              mark(card, '◎', 'good');
-              Sfx.good();
-              App.say(`${it.say}\n◎ ${M.name}に ぴったり!`, 'wow');
-            } else {
-              mark(card, '△', 'meh');
-              cards[best].classList.add('hint');
-              Sfx.pop();
-              App.say(`${it.say}\nでも ${M.name}には「${ITEM_BY_ID[best].name}」が おすすめだよ。`, 'think');
-            }
-          } else if (it.ok === false) {
-            card.classList.remove('shake');
-            void card.offsetWidth;
-            card.classList.add('shake', 'no');
-            Sfx.oops();
-            App.say(it.say, 'think');
-          } else if (sh.type === 'must') {
-            if (!Loadout.safety.includes(it.id)) Loadout.safety.push(it.id);
-            card.classList.add('selected');
-            mark(card, '✔', 'good');
-            Sfx.good();
-            App.say(it.say + (shelfDone(sh) ? '\nこれで あんしん!' : ''), 'wow');
-          } else {
-            const i = Loadout.extra.indexOf(it.id);
-            if (i < 0) {
-              Loadout.extra.push(it.id);
-              card.classList.add('selected');
-              mark(card, '✔', 'good');
-              Sfx.good();
-              App.say(it.say);
-            } else {
-              Loadout.extra.splice(i, 1);
-              card.classList.remove('selected');
-              mark(card, '', '');
-              Sfx.click();
-              App.say(`${it.name}は やめておくね。`);
-            }
-          }
-          next.classList.toggle('pulse', shelfDone(sh));
+          Loadout.gear[sh.id] = it.id;
+          cards.forEach(c => { c.classList.remove('selected'); c.querySelector('.badge').textContent = ''; });
+          card.classList.add('selected');
+          card.querySelector('.badge').textContent = '✔';
+          Sfx.pop();
+          App.say(it.say);
+          next.classList.add('pulse');
         });
+        cards.push(card);
         shelf.appendChild(card);
       });
-
       App.stage.replaceChildren(wrap);
-      App.say(`${sh.title}。\n${sh.say}`);
+
+      if (opts.fix) {
+        App.say(`${sh.title}を えらびなおそう。\nおすすめは「${ITEM_BY_ID[opts.hint].name}」だよ。`);
+      } else {
+        App.say((firstVisit ? 'いらっしゃい! ここは つりぐやさん。\nさお・しかけ・エサの 3つを えらんで、レジに もってきてね。\n' : '') + `${idx + 1}つめは ${sh.title}。`);
+      }
+      firstVisit = false;
 
       const last = idx === SHELVES.length - 1;
-      const next = App.btn(last ? '🧾 おかいけい ▶' : 'つぎの たな ▶', {
-        cls: 'big green' + (shelfDone(sh) ? ' pulse' : ''),
+      const next = App.btn(opts.fix || last ? '🧾 レジに もっていく ▶' : 'つぎの たな ▶', {
+        cls: 'big green' + (Loadout.gear[sh.id] ? ' pulse' : ''),
         onClick: () => {
-          if (!shelfDone(sh)) {
-            App.say(sh.type === 'must'
-              ? 'ライフジャケットと ぼうしを わすれずに えらんでね!'
-              : 'どれか 1つ えらんでね。', 'think');
-            return;
-          }
-          if (last) App.go('receipt');
+          if (!Loadout.gear[sh.id]) { App.say('どれか 1つ えらんでね。', 'think'); return; }
+          if (opts.fix || last) App.go('check');
           else { idx++; render(); }
         },
       });
       const back = App.btn('◀', {
         cls: 'gray',
         onClick: () => {
-          if (idx === 0) App.go('method');
+          if (opts.fix) App.go('check');
+          else if (idx === 0) App.go('title');
           else { idx--; render(); }
         },
       });
@@ -198,106 +101,67 @@ Scenes.shop = {
   },
 };
 
-/* ───────── 1-c. おかいけい（どうぐの かくにん） ───────── */
-Scenes.receipt = {
+/* ───────── 1-b. レジ（てんいんさんが くみあわせを チェック） ───────── */
+Scenes.check = {
   step: 0,
+  clerk: true,
   enter() {
-    if (!Loadout.ready()) { App.go(Loadout.method ? 'shop' : 'method', { shelf: 0 }); return; }
-    const M = Loadout.m;
-    const n = Loadout.matchCount();
-    const rows = SHELVES.filter(s => s.type === 'one').map(s => {
+    if (!Loadout.picked()) { App.go('shop'); return; }
+    const { method: M, wrong } = Loadout.check();
+    const ok = wrong.length === 0;
+
+    const rows = SHELVES.map((s, i) => {
       const it = ITEM_BY_ID[Loadout.gear[s.id]];
-      const ok = M.gear[s.id] === it.id;
+      const w = wrong.find(x => x.shelf.id === s.id);
       return `
-        <li class="${ok ? 'ok' : 'ng'}">
+        <li class="${w ? 'ng' : 'ok'}" data-i="${i}">
           <span class="r-ico">${Art.icon(it)}</span>
-          <span class="r-txt"><small>${s.title}</small>${it.name}${ok ? '' : `<em>おすすめ: ${ITEM_BY_ID[M.gear[s.id]].name}</em>`}</span>
-          <span class="r-mark">${ok ? '◎' : '△'}</span>
+          <span class="r-txt"><small>${s.title}</small>${it.name}${w ? `<em>→「${w.best.name}」に しよう</em>` : ''}</span>
+          ${w ? '<button class="fix-btn">なおす</button>' : '<span class="r-mark">⭕</span>'}
         </li>`;
     }).join('');
-    const extras = [...Loadout.safety, ...Loadout.extra].map(id => `<span class="r-chip">${Art.icon(ITEM_BY_ID[id])}</span>`).join('');
 
-    App.stage.appendChild(h(`
+    const wrap = h(`
       <div class="receipt">
-        <div class="shop-head">🧾 <span class="shop-method">${M.name}</span> の どうぐ</div>
-        <div class="stars">${'★'.repeat(n)}<span>${'☆'.repeat(4 - n)}</span></div>
+        <div class="shop-head">🧾 レジ</div>
         <ul class="r-list">${rows}</ul>
-        <div class="r-extra">${extras}</div>
-      </div>`));
+        ${ok ? `<div class="r-ok">これは <b>${M.name}</b> の どうぐ!</div>` : ''}
+      </div>`);
+    wrap.querySelectorAll('.fix-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        Sfx.click();
+        const i = +btn.closest('li').dataset.i;
+        const w = wrong.find(x => x.shelf.id === SHELVES[i].id);
+        App.go('shop', { shelf: i, fix: true, hint: w.best.id });
+      });
+    });
+    App.stage.appendChild(wrap);
 
-    if (n === 4) {
+    if (ok) {
+      Loadout.method = M.id;
+      Loadout.save();
       Sfx.fanfare();
       confetti(App.stage);
-      App.say('ぜんぶ ぴったり! すごい!\nこれなら めずらしい さかなも つれるかも!', 'wow');
-    } else if (n >= 2) {
-      App.say('いくつか ちがう どうぐが あるね。\nこのままでも つりは できるけど、つれにくいかも。えらびなおしてみる?', 'think');
+      App.say(`ばっちり! これは「${M.name}」の どうぐだね。\n${M.desc}\nいってらっしゃい!`, 'wow');
+      App.setControls(
+        App.btn('◀ えらびなおす', { cls: 'gray', onClick: () => App.go('shop') }),
+        App.btn('🌊 うみへ しゅっぱつ ▶', { cls: 'big green pulse', onClick: () => App.go('bait') }),
+      );
     } else {
-      App.say('どうぐが あまり あっていないみたい。\nこのままだと なかなか つれないよ。えらびなおしてみよう!', 'think');
+      Sfx.oops();
+      const rig = ITEM_BY_ID[Loadout.gear.rig];
+      const fixes = wrong.map(w => `${w.shelf.title}は「${w.best.name}」が ぴったりだよ。`).join('\n');
+      const lead = Loadout.gear.rig === M.gear.rig
+        ? `${rig.name}は「${M.name}」の しかけだね。`
+        : `この くみあわせなら「${M.name}」が できるよ。`;
+      App.say(`ちょっと まって! ${lead}\n${fixes}\n「なおす」を おしてね。`, 'think');
+      // なおす ところが 1つなら、ボタンでも すぐ なおしに いける
+      const first = wrong[0];
+      App.setControls(App.btn(`🔧 ${first.shelf.title}を なおす`, {
+        cls: 'big pulse',
+        onClick: () => App.go('shop', { shelf: SHELVES.indexOf(first.shelf), fix: true, hint: first.best.id }),
+      }));
     }
-
-    App.setControls(
-      App.btn('◀ えらびなおす', { cls: 'gray', onClick: () => App.go('shop', { shelf: 0 }) }),
-      App.btn('つりに いく ▶', {
-        cls: 'big green pulse',
-        onClick: () => {
-          Loadout.save();
-          App.go(Save.data.safetyDone ? 'bait' : 'safety');
-        },
-      }),
-    );
-  },
-};
-
-/* ───────── 2. あんぜんの やくそく ───────── */
-Scenes.safety = {
-  step: 1,
-  enter() {
-    let idx = 0;
-    const show = () => {
-      const q = SAFETY[idx];
-      App.say(`やくそく ${idx + 1}。\n${q.q}`);
-      App.setControls();
-      const card = h(`
-        <div class="quiz">
-          <div class="quiz-num">やくそく ${idx + 1} / ${SAFETY.length}</div>
-          <div class="quiz-q">${q.q}</div>
-          <div class="choices"></div>
-        </div>`);
-      const choices = card.querySelector('.choices');
-      const opts = shuffle([{ ...q.a, ok: true }, { ...q.b, ok: false }]);
-      opts.forEach(o => {
-        const b = h(`<button class="choice"><span class="ico">${o.icon}</span><span class="lbl">${o.label}</span><span class="mark"></span></button>`);
-        b.addEventListener('click', () => {
-          if (card.classList.contains('solved')) return;
-          if (o.ok) {
-            card.classList.add('solved');
-            b.classList.add('yes');
-            b.querySelector('.mark').textContent = '⭕';
-            Sfx.good();
-            App.say(o.say, 'wow');
-            const last = idx === SAFETY.length - 1;
-            App.setControls(App.btn(last ? 'じゅんびを しよう ▶' : 'つぎの やくそく ▶', {
-              cls: 'big pulse green',
-              onClick: () => {
-                if (last) {
-                  Save.data.safetyDone = true;
-                  Save.write();
-                  App.go('bait');
-                } else { idx++; show(); }
-              },
-            }));
-          } else {
-            b.classList.add('no');
-            b.querySelector('.mark').textContent = '❌';
-            Sfx.oops();
-            App.say(o.say, 'think');
-          }
-        });
-        choices.appendChild(b);
-      });
-      App.stage.replaceChildren(card);
-    };
-    show();
   },
 };
 
@@ -324,9 +188,9 @@ function targetArt(kind) {
 }
 
 Scenes.bait = {
-  step: 2,
+  step: 1,
   enter() {
-    if (!Loadout.ready()) { App.go('method'); return; }
+    if (!Loadout.ready()) { App.go('shop'); return; }
     const b = ITEM_BY_ID[Loadout.gear.bait];
     const kind = b.id === 'amiebi' ? 'basket' : b.id === 'jig' ? 'snap' : 'hook';
     const label = { basket: 'コマセカゴ', snap: 'スナップ', hook: 'はり' }[kind];
@@ -419,15 +283,13 @@ Scenes.bait = {
 
 /* ───────── 4〜6. なげる・まつ・まく ───────── */
 Scenes.fishing = {
-  step: 3,
+  step: 2,
   enter() {
-    if (!Loadout.ready()) { App.go('method'); return; }
+    if (!Loadout.ready()) { App.go('shop'); return; }
     const M = Loadout.m;
     const useBobber = M.indicator === 'bobber';
     const isDrop = M.cast === 'drop';
     const isLure = Loadout.gear.bait === 'jig';
-    const match = Loadout.matchCount();
-    const glasses = Loadout.has('glasses');
 
     const st = App.stage;
     st.classList.add('stage-sea');
@@ -479,7 +341,7 @@ Scenes.fishing = {
       phase: 'look', t: 0,
       bx: TIP.x, by: TIP.y, landX: 500, fu: 0, power: 0, inWater: false,
       dip: 0, dipCur: 0, bend: 0, bendCur: 0, shakeUntil: 0,
-      bite: 'idle', round: 0, approach: null,
+      bite: 'idle', round: 0,
       dist: 100, struggling: false, nextSwitch: 0, strugCount: 0, tension: 0,
       fish: null, ui: null,
     };
@@ -545,7 +407,7 @@ Scenes.fishing = {
     /* フェーズ: うしろを みる → なげる / あしもとに おとす */
     const look = () => {
       s.phase = 'look';
-      App.setStep(3);
+      App.setStep(2);
       if (isDrop) {
         App.say(`${M.name}は、あしもとに しかけを そっと おとすよ。\nボタンを おしてね。`);
         App.setControls(App.btn('⬇️ そっと おとす', {
@@ -626,11 +488,7 @@ Scenes.fishing = {
       if (useBobber) how = 'ウキを よーく みてね。ぐーっと しずんだら「あわせる!」を おしてね。';
       else if (isLure) how = 'ルアーを ゆっくり まいて うごかすよ。さおさきが ぐいーっと まがったら「あわせる!」!';
       else how = 'さおの さきを よーく みてね。ぐいーっと まがったら「あわせる!」を おしてね。';
-      const notes = [];
-      if (glasses) notes.push('へんこう サングラスで みずの なかも みえるよ!');
-      if (match < 4) notes.push('どうぐが すこし あっていないから、まつ じかんが ながいかも。');
-      // ふきだしが ながく なりすぎないように、おしらせが あるときは みじかく
-      App.say((notes.length ? how + '\n' + notes.join('') : msg + '\n' + how), 'wow');
+      App.say(msg + '\n' + how, 'wow');
       wait(true);
     };
 
@@ -640,14 +498,12 @@ Scenes.fishing = {
       s.bite = 'idle';
       s.dip = 0;
       s.bend = 0;
-      App.setStep(4);
+      App.setStep(3);
       const r = ++s.round;
       const hookBtn = App.btn('✊ あわせる!', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
       App.setControls(hookBtn);
 
-      const slow = 1 + (4 - match) * 0.5;
-      let tt = ((first ? 6000 : 2500) + Math.random() * 2500) * slow;
-      s.approach = glasses ? { t0: s.t, t1: s.t + tt / 1000 } : null;
+      let tt = (first ? 6000 : 2500) + Math.random() * 2500;
       const nibbles = 1 + Math.floor(Math.random() * 3);
       for (let i = 0; i < nibbles; i++) {
         App.after(tt, () => { if (s.round === r) nibble(); });
@@ -690,7 +546,6 @@ Scenes.fishing = {
         s.bite = 'gone';
         s.dip = 0;
         s.bend = 0;
-        s.approach = null;
         hookBtn.classList.remove('now');
         hookBtn.innerHTML = '✊ あわせる!';
         Sfx.oops();
@@ -719,8 +574,7 @@ Scenes.fishing = {
     const hooked = () => {
       s.round++;
       s.phase = 'reel';
-      s.approach = null;
-      App.setStep(5);
+      App.setStep(4);
       s.fish = pickFish();
       s.dist = 100;
       s.tension = 0;
@@ -819,16 +673,6 @@ Scenes.fishing = {
           s.by += (target - s.by) * Math.min(1, dt * 2);
           if (isLure && s.bite === 'idle') s.bx = Math.max(PIER + 110, s.bx - dt * 9);
         }
-        // へんこう サングラス: さかなが ちかづくのが みえる
-        if (s.approach && s.bite !== 'gone') {
-          const p = Math.min(1, (s.t - s.approach.t0) / Math.max(0.1, s.approach.t1 - s.approach.t0));
-          shadow.setAttribute('opacity', (0.45 * Math.min(1, p * 3)).toFixed(2));
-          shadowInner.setAttribute('transform', 'scale(-0.9,0.9)');
-          const sx = s.bx + 40 + 170 * (1 - p);
-          shadow.setAttribute('transform', `translate(${sx.toFixed(1)},${(useBobber ? WATER + 45 : s.by).toFixed(1)}) rotate(${Math.sin(s.t * 6) * 3})`);
-        } else if (s.phase === 'wait') {
-          shadow.setAttribute('opacity', '0');
-        }
       } else if (s.phase === 'reel') {
         if (s.t >= s.nextSwitch) setStruggle(!s.struggling);
         s.bend = s.struggling ? 0.3 : 0.14;
@@ -861,12 +705,11 @@ Scenes.fishing = {
 
 /* ───────── つれた! ───────── */
 Scenes.caught = {
-  step: 6,
+  step: 5,
   enter({ fish }) {
     const isNew = !Save.data.caught[fish.id];
     Save.addFish(fish.id);
     const first = Save.total() === 1;
-    const icon = id => Art.icon(ITEM_BY_ID[id]);
 
     App.stage.classList.add('stage-caught');
     const wrap = h(`
@@ -887,37 +730,28 @@ Scenes.caught = {
     const factEl = wrap.querySelector('.caught-fact');
 
     const finish = text => {
-      if (Loadout.has('towel')) text += '\nさいごに タオルで てを ふいて おしまい!';
       App.say(text, 'wow');
       if (first) {
         wrap.appendChild(h('<div class="medal">🏅 はじめての つり せいこう!<br>きみは つり めいじん!</div>'));
       }
       App.setControls(
         App.btn('🎣 もういちど つる', { cls: 'big pulse green', onClick: () => App.go('bait') }),
-        App.btn('🏪 どうぐを かえる', { cls: '', onClick: () => App.go('method') }),
+        App.btn('🏪 どうぐを かえる', { cls: '', onClick: () => App.go('shop') }),
         App.btn('📖 ずかん', { cls: 'blue', onClick: () => App.go('zukan') }),
         App.btn('🏠', { cls: 'gray', onClick: () => App.go('title') }),
       );
     };
 
-    // つった あとの あつかい（もっている どうぐで かわる）
+    // つった あとの あつかい
     const handling = () => {
-      const notes = [];
-      if (fish.spiky) {
-        notes.push(Loadout.has('grip')
-          ? { ico: icon('grip'), text: 'フィッシュグリップで、とげに さわらずに つかめたね。' }
-          : { ico: '<span class="emoji">⚠️</span>', text: `${fish.name}は とげや はが あるよ。フィッシュグリップが あると あんしん。` });
-      } else {
-        notes.push(Loadout.has('bucket')
-          ? { ico: icon('bucket'), text: 'バケツの みずで てを ぬらしてから、やさしく さわろうね。' }
-          : { ico: '<span class="emoji">🤲</span>', text: 'てを みずで ぬらしてから、やさしく さわろうね。' });
-      }
-      notes.push(Loadout.has('plier')
-        ? { ico: icon('plier'), text: 'プライヤーで はりを はずせたね。' }
-        : { ico: '<span class="emoji">🙋</span>', text: 'はりは おとなに はずしてもらおう。プライヤーが あると べんりだよ。' });
-
+      const notes = [
+        fish.spiky
+          ? { ico: '⚠️', text: `${fish.name}は とげや はが あるよ。さわらずに、おとなに もってもらおう。` }
+          : { ico: '🤲', text: 'てを みずで ぬらしてから、やさしく さわろうね。' },
+        { ico: '🙋', text: 'はりは おとなに はずしてもらおう。' },
+      ];
       wrap.classList.add('handling');
-      factEl.replaceWith(h(`<ul class="notes">${notes.map(n => `<li><span class="n-ico">${n.ico}</span>${n.text}</li>`).join('')}</ul>`));
+      factEl.replaceWith(h(`<ul class="notes">${notes.map(n => `<li><span class="n-ico"><span class="emoji">${n.ico}</span></span>${n.text}</li>`).join('')}</ul>`));
       App.say(notes.map(n => n.text).join('\n') + '\nこの さかな、どうする?');
 
       App.setControls(
@@ -929,18 +763,11 @@ Scenes.caught = {
             finish('ばいばい! げんきでね。\nうみに かえすと、また おおきく なるよ。');
           },
         }),
-        App.btn('🧊 もってかえる', {
+        App.btn('🪣 もってかえる', {
           onClick: () => {
-            if (!Loadout.has('cooler')) {
-              Sfx.oops();
-              App.say('クーラーボックスが ないと、さかなが いたんじゃうよ。\nきょうは うみに かえしてあげよう。', 'think');
-              return;
-            }
             fishEl.classList.add('to-bucket');
             Sfx.pop();
-            finish('クーラーボックスに いれよう。'
-              + (Loadout.has('ice') ? 'こおりで ひえひえ!' : 'こおりも あると もっと いいね。')
-              + '\nたべる ぶんだけ もってかえろうね。');
+            finish('たべる ぶんだけ もってかえろうね。\nおうちで「いただきます」しようね。');
           },
         }),
       );
@@ -975,7 +802,7 @@ Scenes.zukan = {
         if (n) { Sfx.pop(); App.say(`${f.name}。\n${f.fact}`); }
         else {
           Sfx.click();
-          App.say(`まだ つれていない さかなだよ。\n${where}で つれるかも!${f.rare ? '\nどうぐが ぜんぶ ぴったりだと でてくる、めずらしい さかなだよ。' : ''}`, 'think');
+          App.say(`まだ つれていない さかなだよ。\n${where}で つれるかも!${f.rare ? '\nめったに つれない、めずらしい さかなだよ。' : ''}`, 'think');
         }
       });
       grid.appendChild(card);
@@ -985,7 +812,7 @@ Scenes.zukan = {
     App.setControls(
       App.btn('🎣 つりに いく', {
         cls: 'big green',
-        onClick: () => (Loadout.ready() ? App.go('bait') : App.go('method')),
+        onClick: () => (Loadout.ready() ? App.go('bait') : App.go('shop')),
       }),
       App.btn('🏠 もどる', { cls: 'gray', onClick: () => App.go('title') }),
     );

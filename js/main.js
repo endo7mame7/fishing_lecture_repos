@@ -56,6 +56,7 @@ const App = {
     this.controls.innerHTML = '';
 
     const scene = Scenes[name];
+    document.querySelector('#guide').classList.toggle('clerk', !!scene.clerk);
     this.setStep(scene.step);
     this.cleanup = scene.enter(opts) || null;
   },
