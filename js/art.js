@@ -47,7 +47,7 @@ const Art = (() => {
   function fish(f, opt = {}) {
     const id = 'fclip' + (++uid);
     const sil = !!opt.silhouette;
-    const cx = 105, cy = 62;
+    const cx = 112, cy = 68;
     const rx = 62 * f.len, ry = 34 * f.h;
     const body = sil ? '#b9c4cf' : f.body;
     const belly = sil ? '#b9c4cf' : f.belly;
@@ -84,6 +84,10 @@ const Art = (() => {
       } else if (f.pattern === 'spots') {
         const pts = [[-0.5, -0.4], [-0.25, -0.55], [0, -0.35], [0.2, -0.6], [-0.35, -0.1], [-0.05, -0.05], [0.3, -0.25], [-0.6, -0.15]];
         pat = pts.map(([px, py]) => `<circle cx="${cx + px * rx}" cy="${cy + py * ry}" r="3.6" fill="${f.patColor}"/>`).join('');
+      } else if (f.pattern === 'dots') {
+        for (let i = 0; i < 6; i++) {
+          pat += `<circle cx="${cx - rx * 0.1 + i * rx * 0.13}" cy="${cy - ry * 0.05}" r="3.2" fill="${f.patColor}"/>`;
+        }
       } else if (f.pattern === 'blotch') {
         pat = `<ellipse cx="${cx - rx * 0.35}" cy="${cy - ry * 0.3}" rx="14" ry="9" fill="${f.patColor}" opacity=".6"/>
                <ellipse cx="${cx + rx * 0.05}" cy="${cy - ry * 0.45}" rx="12" ry="8" fill="${f.patColor}" opacity=".6"/>
@@ -99,7 +103,7 @@ const Art = (() => {
     const q = sil ? `<text x="${cx}" y="${cy + 15}" font-size="42" text-anchor="middle" fill="#fff" font-weight="800">?</text>` : '';
 
     return `
-<svg viewBox="0 0 200 124" class="fish-svg" aria-hidden="true">
+<svg viewBox="0 0 214 136" class="fish-svg" aria-hidden="true">
   <defs><clipPath id="${id}"><ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}"/></clipPath></defs>
   ${tail}${dorsal}${belFin}
   <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${body}"/>
@@ -134,6 +138,70 @@ const Art = (() => {
 </svg>`;
   }
 
+
+  // つりぐやさんの どうぐ（100x100）
+  function gear(id) {
+    const S = c => `<svg viewBox="0 0 100 100" class="gear-svg" aria-hidden="true">${c}</svg>`;
+    const reel = (x, y, c = '#555') => `<circle cx="${x}" cy="${y}" r="10" fill="${c}"/><circle cx="${x}" cy="${y}" r="4" fill="#ddd"/><path d="M${x} ${y} l11 7" stroke="#333" stroke-width="3" stroke-linecap="round"/><circle cx="${x + 12}" cy="${y + 8}" r="3.5" fill="#333"/>`;
+    const rod = (x1, y1, x2, y2, c, w) => `<path d="M${x1} ${y1} L${x2} ${y2}" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/><path d="M${x1} ${y1} L${x1 + (x2 - x1) * 0.22} ${y1 + (y2 - y1) * 0.22}" stroke="#3a2a1e" stroke-width="${w + 3}" stroke-linecap="round"/>`;
+    const spool = (c, label, stripes = null) => {
+      let band = `<rect x="28" y="30" width="44" height="40" fill="${c}"/>`;
+      if (stripes) band = stripes.map((sc, i) => `<rect x="28" y="${30 + i * 40 / stripes.length}" width="44" height="${40 / stripes.length + 0.5}" fill="${sc}"/>`).join('');
+      return S(`${band}<path d="M28 38 H72 M28 46 H72 M28 54 H72 M28 62 H72" stroke="#00000018" stroke-width="2"/>
+        <rect x="20" y="22" width="60" height="9" rx="4" fill="#555"/><rect x="20" y="69" width="60" height="9" rx="4" fill="#555"/>
+        <text x="50" y="94" text-anchor="middle" font-size="15" font-weight="800" fill="#3a2e26">${label}</text>`);
+    };
+    const hookAt = (x, y, s = 1) => `<path d="M${x} ${y} v${10 * s} q0 ${7 * s} ${-6 * s} ${7 * s} q${-6 * s} 0 ${-6 * s} ${-6 * s}" stroke="#8a949d" stroke-width="2.6" fill="none" stroke-linecap="round"/>`;
+    const bobber = (x, y, r = 9) => `<rect x="${x - 1.5}" y="${y - r - 9}" width="3" height="10" fill="#e53935"/><path d="M${x - r} ${y} A${r} ${r} 0 0 1 ${x + r} ${y} Z" fill="#e53935"/><path d="M${x - r} ${y} A${r} ${r} 0 0 0 ${x + r} ${y} Z" fill="#fff" stroke="#ccc"/>`;
+    switch (id) {
+      case 'choinage_rod': return S(rod(16, 88, 84, 16, '#2f7cc0', 4) + reel(30, 76));
+      case 'iso_rod':      return S(rod(10, 94, 94, 4, '#c0392b', 3) + reel(24, 82));
+      case 'lure_rod':     return S(rod(16, 88, 82, 20, '#222', 4) + `<circle cx="60" cy="43" r="2.5" fill="#d4af37"/><circle cx="72" cy="31" r="2" fill="#d4af37"/>` + reel(30, 76, '#c9a227'));
+      case 'ana_rod':      return S(rod(28, 82, 70, 40, '#3d9466', 5) + reel(40, 72));
+      case 'nylon3': return spool('#8fe0a0', '3ごう');
+      case 'nylon2': return spool('#c8f2cf', '2ごう');
+      case 'pe':     return spool('', 'PE', ['#ff6fa8', '#ffd54a', '#4fc3f7', '#7ddc6f', '#b388ff']);
+      case 'tenbin': return S(`<path d="M50 6 V26" stroke="#555" stroke-width="2"/><path d="M28 28 H72 V52" stroke="#9aa4ad" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M72 52 Q80 64 72 78 Q64 64 72 52 Z" fill="#6b6f76"/><path d="M28 28 V72" stroke="#555" stroke-width="1.5"/>${hookAt(28, 72)}`);
+      case 'sabiki': {
+        let c = `<rect x="38" y="4" width="24" height="18" rx="4" fill="#ff9f43" stroke="#d07a20" stroke-width="2"/><path d="M42 8 V18 M50 8 V18 M58 8 V18" stroke="#d07a20"/><path d="M50 22 V84" stroke="#555" stroke-width="1.5"/>`;
+        [32, 46, 60, 74].forEach((y, i) => {
+          const d = i % 2 ? 1 : -1;
+          c += `<path d="M50 ${y} l${14 * d} 4" stroke="#555" stroke-width="1.2"/><path d="M${50 + 14 * d} ${y + 4} q${3 * d} 6 0 9" stroke="#8a949d" stroke-width="2" fill="none"/><circle cx="${50 + 14 * d}" cy="${y + 5}" r="3.2" fill="#ff7eb6"/>`;
+        });
+        return S(c + `<path d="M50 84 Q57 92 50 98 Q43 92 50 84 Z" fill="#6b6f76"/>`);
+      }
+      case 'uki_shikake': return S(`<path d="M50 4 V24" stroke="#555" stroke-width="1.5"/>${bobber(50, 32, 11)}<path d="M50 43 V72" stroke="#555" stroke-width="1.5"/><circle cx="50" cy="60" r="3.5" fill="#6b6f76"/>${hookAt(50, 72, 1.2)}`);
+      case 'leader': return S(`<path d="M50 4 V30" stroke="#ff6fa8" stroke-width="2.5"/><path d="M50 30 V62" stroke="#b7e3f7" stroke-width="3"/>
+        <path d="M50 62 q-9 2 -9 12 q0 12 9 14 q9 -2 9 -14 q0 -10 -9 -12" stroke="#8a949d" stroke-width="3" fill="none"/>`);
+      case 'burakuri': return S(`<path d="M50 6 V40" stroke="#555" stroke-width="1.5"/><path d="M50 38 Q66 54 50 70 Q34 54 50 38 Z" fill="#e53935"/><circle cx="46" cy="50" r="3" fill="#fff" opacity=".6"/>${hookAt(50, 70, 1.4)}`);
+      case 'aoisome': return S(`<path d="M14 64 q12 -26 24 0 t24 0 t24 -6" stroke="#b5533c" stroke-width="10" fill="none" stroke-linecap="round"/><path d="M14 64 q12 -26 24 0 t24 0 t24 -6" stroke="#e08b6c" stroke-width="3" fill="none" stroke-linecap="round" stroke-dasharray="2 5"/>`);
+      case 'amiebi': {
+        let c = `<rect x="16" y="28" width="68" height="48" rx="8" fill="#f7b6c2" stroke="#e48a9c" stroke-width="2"/>`;
+        for (let i = 0; i < 14; i++) c += `<path d="M${24 + (i % 5) * 13} ${38 + Math.floor(i / 5) * 13} q4 -5 8 0" stroke="#d35d76" stroke-width="2.5" fill="none" stroke-linecap="round"/>`;
+        return S(c);
+      }
+      case 'okiami': return S(`<path d="M24 60 Q30 30 62 32 Q80 34 78 50 Q76 64 58 62" stroke="#f48a9c" stroke-width="14" fill="none" stroke-linecap="round"/>
+        <path d="M58 62 l-6 12 M58 62 l6 12" stroke="#f48a9c" stroke-width="4" stroke-linecap="round"/><circle cx="30" cy="54" r="3" fill="#222"/><path d="M24 52 l-14 -12 M26 50 l-10 -16" stroke="#f48a9c" stroke-width="1.5"/>`);
+      case 'jig': return S(`<defs><linearGradient id="jigG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f7fd0"/><stop offset=".5" stop-color="#d9e6f2"/><stop offset="1" stop-color="#9fb4c8"/></linearGradient></defs>
+        <path d="M14 50 Q40 28 80 46 Q86 50 80 54 Q40 72 14 50 Z" fill="url(#jigG)" stroke="#5c7a96" stroke-width="2"/><circle cx="72" cy="48" r="3" fill="#222"/>
+        <circle cx="86" cy="50" r="3" fill="none" stroke="#8a949d" stroke-width="2"/>${hookAt(14, 54, 1)}`);
+      case 'cooler': return S(`<rect x="14" y="36" width="72" height="48" rx="6" fill="#2f7cc0"/><rect x="10" y="26" width="80" height="14" rx="5" fill="#f4f6f8" stroke="#cfd6dd" stroke-width="2"/>
+        <rect x="40" y="18" width="20" height="8" rx="3" fill="#cfd6dd"/><rect x="24" y="50" width="52" height="6" rx="3" fill="#ffffff55"/>`);
+      case 'grip': return S(`<rect x="44" y="40" width="12" height="50" rx="6" fill="#ff8a3d"/><path d="M44 42 L38 14 Q50 8 50 22 M56 42 L62 14 Q50 8 50 22" stroke="#8a949d" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <circle cx="50" cy="44" r="5" fill="#555"/><path d="M50 90 q-14 4 -10 -6" stroke="#555" stroke-width="2" fill="none"/>`);
+      case 'plier': return S(`<path d="M50 50 L28 90 M50 50 L72 90" stroke="#e53935" stroke-width="9" stroke-linecap="round"/><path d="M50 50 L44 12 M50 50 L56 12" stroke="#8a949d" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="50" r="5" fill="#555"/>`);
+      case 'towel': return S(`<rect x="18" y="24" width="64" height="56" rx="6" fill="#fff6d6" stroke="#e6cf8a" stroke-width="2"/><path d="M18 36 H82 M18 68 H82" stroke="#4fa3e8" stroke-width="5"/><path d="M18 44 H82" stroke="#ff8a3d" stroke-width="3"/>`);
+      case 'bobber': return S(bobber(50, 56, 20));
+    }
+    return S('');
+  }
+
+  // たなの どうぐ・つりかたの アイコン
+  function icon(item) {
+    return item.art ? gear(item.art) : `<span class="emoji">${item.icon}</span>`;
+  }
+
   function seaScene() {
     return `
 <svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" class="sea-svg">
@@ -160,6 +228,11 @@ const Art = (() => {
     <rect x="-2" y="-24" width="4" height="13" rx="2" fill="#e53935"/>
     <path d="M-10 0 A10 10 0 0 1 10 0 Z" fill="#e53935"/>
     <path d="M-10 0 A10 10 0 0 0 10 0 Z" fill="#fff"/>
+  </g>
+
+  <g id="weight" opacity="0" transform="translate(500,300)">
+    <path class="w-sinker" d="M0 -9 Q8 0 0 9 Q-8 0 0 -9 Z" fill="#6b6f76"/>
+    <g class="w-lure"><path d="M-14 0 Q-2 -8 12 0 Q-2 8 -14 0 Z" fill="#9fc4e6" stroke="#5c7a96" stroke-width="1.5"/><circle cx="7" cy="-1" r="1.6" fill="#223"/></g>
   </g>
 
   <rect y="243" width="800" height="207" fill="#1f78c4" opacity=".55"/>
@@ -192,9 +265,9 @@ const Art = (() => {
     <circle cx="166" cy="138" r="3.8" fill="#ff9e9e" opacity=".7"/>
     <path d="M150 139 q5 4 10 0" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
   </g>
-  <path id="rod" d="M166 178 L262 112" stroke="#5d4037" stroke-width="5" stroke-linecap="round"/>
+  <path id="rod" d="M166 178 L262 112" stroke="#5d4037" stroke-width="5" stroke-linecap="round" fill="none"/>
 </svg>`;
   }
 
-  return { bear, bobberIcon, fish, worm, hook, seaScene };
+  return { bear, bobberIcon, fish, worm, hook, gear, icon, seaScene };
 })();
