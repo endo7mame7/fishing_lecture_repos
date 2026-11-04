@@ -528,3 +528,21 @@ button { font-family: inherit; font-weight: 800; color: inherit; cursor: pointer
 .hold-ctl.holding { transform: translateY(5px); box-shadow: 0 1px 0 rgba(0, 0, 0, .2); filter: brightness(1.08); }
 .btn small { font-size: .6em; opacity: .85; }
 .badge-multi { position: absolute !important; bottom: 14px; right: 14px; background: #ff4f7b; color: #fff; border-radius: 999px; padding: 6px 16px; font-size: 20px; transform: rotate(-6deg); }
+
+/* ── てもと してん ── */
+.fp-layer { position: absolute; inset: 0; z-index: 1; background: linear-gradient(#7cc8f7 50%, #a8743f 50%); transition: opacity .5s; overflow: hidden; border-radius: inherit; }
+.fp-layer.off { opacity: 0; pointer-events: none; }
+.fp-svg { width: 100%; height: 100%; display: block; touch-action: none; }
+.fp-layer.look-back .fp-svg { animation: lookback 1.5s ease-in-out; }
+.fp-layer.look-back::after { content: '👀 うしろ… だれも いない! OK!'; position: absolute; left: 50%; top: 40%; transform: translateX(-50%); background: rgba(255,255,255,.92); border-radius: 999px; padding: 8px 20px; font-size: clamp(18px, 3vw, 26px); color: var(--green-d); white-space: nowrap; animation: pop .4s .4s both; }
+@keyframes lookback { 0%, 100% { transform: none; filter: none; } 30%, 70% { transform: translateX(-30%) scale(1.15); filter: blur(2px) brightness(.9); } }
+.fp-steps { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 96%; pointer-events: none; }
+.fp-steps span { font-size: clamp(12px, 1.8vw, 16px); background: rgba(255,255,255,.8); color: #8a7d72; border-radius: 999px; padding: 3px 12px; }
+.fp-steps span.now { background: var(--orange); color: #fff; animation: pulse 1s infinite; }
+.fp-steps span.done { background: #d8f5e6; color: var(--green-d); }
+.fp-flash { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 0 rgba(239,91,91,0); transition: box-shadow .2s; }
+.fp-flash.on { box-shadow: inset 0 0 0 10px rgba(239,91,91,.7); }
+.finger-spot { fill: rgba(255,138,61,.35); stroke: #ff8a3d; }
+.stage-sea .sea-hud, .stage-sea .depth-gauge { z-index: 2; }
+.hook-btn small { display: block; font-size: .55em; opacity: .9; }
+.stage-sea.fp-on .depth-gauge { top: 48px !important; bottom: 44px !important; height: auto !important; }

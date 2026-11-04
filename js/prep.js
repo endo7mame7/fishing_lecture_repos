@@ -57,8 +57,9 @@ Scenes.prep = {
           Sfx.fanfare();
           confetti(App.stage);
           App.say(msg, 'wow');
-          const last = i === list.length - 1;
-          App.setControls(App.btn(last ? '🎣 つりを はじめる ▶' : 'つぎの じゅんび ▶', { cls: 'big green pulse', onClick: next }));
+          // じどうで つぎの じゅんび（さいごは つり）へ
+          App.setControls();
+          App.after(2600, next);
         },
       };
       ui.controls();

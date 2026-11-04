@@ -35,6 +35,7 @@ Scenes.shop = {
   enter(opts) {
     let idx = opts.shelf || 0;
     let firstVisit = !opts.fix;
+    let token = 0; // えらびなおしたら まえの「つぎへ」を とりけす
 
     const render = () => {
       const sh = SHELVES[idx];
@@ -48,6 +49,15 @@ Scenes.shop = {
         </div>`);
       const shelf = wrap.querySelector('.shelf');
       const cards = [];
+      const my = ++token;
+      const last = idx === SHELVES.length - 1;
+      // えらんだら じどうで つぎの たな（さいごは レジ）へ
+      const advance = () => {
+        if (my !== token) return;
+        if (opts.fix || last) App.go('check');
+        else { idx++; render(); }
+      };
+      let timer = null;
 
       sh.items.forEach(it => {
         const card = h(`
@@ -62,8 +72,9 @@ Scenes.shop = {
           card.classList.add('selected');
           card.querySelector('.badge').textContent = '✔';
           Sfx.pop();
-          App.say(it.say);
-          next.classList.add('pulse');
+          App.say(it.say + (opts.fix || last ? '\nレジに もっていくね。' : ''));
+          if (timer) clearTimeout(timer);
+          timer = App.after(2200, advance);
         });
         cards.push(card);
         shelf.appendChild(card);
@@ -77,15 +88,6 @@ Scenes.shop = {
       }
       firstVisit = false;
 
-      const last = idx === SHELVES.length - 1;
-      const next = App.btn(opts.fix || last ? '🧾 レジに もっていく ▶' : 'つぎの たな ▶', {
-        cls: 'big green' + (Loadout.gear[sh.id] ? ' pulse' : ''),
-        onClick: () => {
-          if (!Loadout.gear[sh.id]) { App.say('どれか 1つ えらんでね。', 'think'); return; }
-          if (opts.fix || last) App.go('check');
-          else { idx++; render(); }
-        },
-      });
       const back = App.btn('◀', {
         cls: 'gray',
         onClick: () => {
@@ -94,7 +96,11 @@ Scenes.shop = {
           else { idx--; render(); }
         },
       });
-      App.setControls(back, next);
+      // まえに えらんだ ものが ある たなは「このまま」で すすめる
+      const keep = Loadout.gear[sh.id] && !opts.fix
+        ? App.btn('このまま ▶', { cls: 'green', onClick: advance })
+        : null;
+      App.setControls(back, ...(keep ? [keep] : []));
     };
 
     render();
@@ -143,10 +149,9 @@ Scenes.check = {
       Sfx.fanfare();
       confetti(App.stage);
       App.say(`ばっちり! これは「${M.name}」の どうぐだね。\n${M.desc}\nいってらっしゃい!`, 'wow');
-      App.setControls(
-        App.btn('◀ えらびなおす', { cls: 'gray', onClick: () => App.go('shop') }),
-        App.btn('🌊 うみへ しゅっぱつ ▶', { cls: 'big green pulse', onClick: () => App.go('travel') }),
-      );
+      // じどうで うみへ しゅっぱつ
+      App.setControls(App.btn('◀ えらびなおす', { cls: 'gray', onClick: () => App.go('shop') }));
+      App.after(3800, () => App.go('travel'));
     } else {
       Sfx.oops();
       const rig = ITEM_BY_ID[Loadout.gear.rig];

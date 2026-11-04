@@ -10,6 +10,59 @@
    むずかしさ（#9）: あわせる じかんは みじかめ。まいている ときに いとが あかい ままだと きれる。ときどき バレる。
 */
 
+/* ───────── てもと してん（なげる〜アワセ） ─────────
+   d: きょり（0=あしもと 1=おき）、lat: よこ（-1=ひだり 1=みぎ）を がめんの いちに する */
+const FP = {
+  pos(d, lat = 0) {
+    const t = 1 - Math.max(0, Math.min(1, d));
+    return { x: 400 + lat * (40 + 380 * t * t), y: 150 + 285 * t * t, k: 0.15 + 0.85 * t * t };
+  },
+  svg(isDrop) {
+    let waves = '';
+    for (let i = 0; i < 18; i++) {
+      const d = (i % 6) / 6 + 0.05, lat = ((i * 37) % 19) / 9.5 - 1;
+      const p = FP.pos(d, lat), w = 24 * p.k + 4;
+      waves += `<path d="M${(p.x - w).toFixed(0)} ${p.y.toFixed(0)} q${(w / 2).toFixed(0)} ${(-4 * p.k - 1).toFixed(1)} ${w.toFixed(0)} 0 t${w.toFixed(0)} 0"/>`;
+    }
+    return `
+<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" class="fp-svg">
+  <defs>
+    <linearGradient id="fpSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc8f7"/><stop offset="1" stop-color="#e3f6ff"/></linearGradient>
+    <linearGradient id="fpSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4aa6dc"/><stop offset="1" stop-color="#16609f"/></linearGradient>
+    <linearGradient id="fpRodG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2f6fb0"/><stop offset="1" stop-color="#1d4a78"/></linearGradient>
+  </defs>
+  <rect x="-2000" width="4800" height="152" fill="url(#fpSky)"/>
+  <circle cx="120" cy="60" r="30" fill="#ffd54a"/><circle cx="120" cy="60" r="44" fill="#ffd54a" opacity=".25"/>
+  <g fill="#fff" opacity=".9" class="cloud"><ellipse cx="560" cy="60" rx="50" ry="15"/><ellipse cx="590" cy="48" rx="28" ry="16"/></g>
+  <path d="M600 152 Q640 128 690 152 Z" fill="#7cc58a"/><path d="M660 152 Q690 136 730 152 Z" fill="#62b072"/>
+  <rect x="-2000" y="150" width="4800" height="300" fill="url(#fpSea)"/>
+  <g class="fp-waves" stroke="#fff" stroke-opacity=".45" stroke-width="2" fill="none" stroke-linecap="round">${waves}</g>
+  <g id="fpSpot"></g>
+  <g id="fpTarget"></g>
+  <path id="fpLine" fill="none" stroke="#f4f4f4" stroke-width="1.6" opacity=".95"/>
+  <rect x="-2000" y="418" width="4800" height="400" fill="#a8743f"/>
+  <path d="M-2000 418 H2800" stroke="#8a5c30" stroke-width="4"/>
+  <path d="M120 418 L60 450 M320 418 L300 450 M520 418 L540 450" stroke="#8a5c30" stroke-width="2"/>
+  <path id="fpRodLine" fill="none" stroke="#f4f4f4" stroke-width="1.4" opacity=".9"/>
+  <path id="fpRod" fill="none" stroke="url(#fpRodG)" stroke-width="7" stroke-linecap="round"/>
+  <path id="fpRodTip" fill="none" stroke="#1d4a78" stroke-width="3.5" stroke-linecap="round"/>
+  <g id="fpReel" transform="translate(640 392)">
+    <path d="M10 -26 L22 -48" stroke="#555" stroke-width="7" stroke-linecap="round"/>
+    <circle r="32" fill="#4a4f57"/><circle r="14" fill="#6b7078"/>
+    <ellipse cx="-36" cy="-6" rx="13" ry="25" fill="#7fd88a" stroke="#3b7d4a" stroke-width="2"/>
+    <path d="M28 8 h24" stroke="#333" stroke-width="6" stroke-linecap="round"/><circle cx="56" cy="8" r="8" fill="#333"/>
+    <path id="fpBail" fill="none" stroke="#d6dbe0" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <g id="fpHand">
+    <path d="M700 470 Q660 420 700 395 Q750 380 790 420 L800 470 Z" fill="#f2c49b"/>
+    <path id="fpFinger" d="M690 405 Q650 392 612 388" stroke="#f2c49b" stroke-width="16" stroke-linecap="round" fill="none"/>
+  </g>
+  <g id="fpSpots"></g>
+  <g id="fpFx"></g>
+</svg>`;
+  },
+};
+
 // きょう つった かず（ページを ひらいている あいだ）
 const Today = { fish: 0, junk: 0 };
 
@@ -26,10 +79,12 @@ Scenes.fishing = {
     st.classList.add('stage-sea');
     st.innerHTML = Art.seaScene() + `
       <div class="sea-hud">きょう 🐟 ${Today.fish}ひき${Today.junk ? ` ・ 🗑️ ${Today.junk}こ` : ''}</div>
+      <div class="fp-layer">${FP.svg(isDrop)}<div class="fp-steps"></div><div class="fp-flash"></div></div>
       <div class="depth-gauge" hidden><span class="dg-lbl">ふかさ</span><div class="dg-col"><span class="dg-fish">🐟</span><span class="dg-hook"></span></div></div>`;
     const svg = st.querySelector('svg');
     const E = id => svg.querySelector('#' + id);
 
+    let fpScale = 1; // てもと してんの え 1たんいが がめんで なんpx か
     // よこながの がめんでは いっぱいに ひろげ、たてながでは うえと したに そらと うみを のばす
     const fit = () => {
       const W = st.clientWidth, H = st.clientHeight;
@@ -46,6 +101,13 @@ Scenes.fishing = {
       // ふかさ メーターを、えの うみの ひょうめん〜そこに ぴったり あわせる
       const sc = wide ? Math.max(W / 800, H / 450) : Math.min(W / 800, H / 450);
       const offY = (H - 450 * sc) / 2;
+      // てもと してん: よこながなら みえる はばを ひろげ、たてながなら そのまま（リールと てが かならず みえる）
+      const fsvg = st.querySelector('.fp-svg');
+      if (fsvg) {
+        const vw = Math.max(800, 450 * W / H);
+        fsvg.setAttribute('viewBox', `${(400 - vw / 2).toFixed(1)} 0 ${vw.toFixed(1)} 450`);
+        fpScale = Math.min(W / vw, H / 450);
+      }
       const g = st.querySelector('.depth-gauge');
       const top = Math.max(4, offY + WATER * sc - 22);
       g.style.top = top + 'px';
@@ -140,6 +202,7 @@ Scenes.fishing = {
       count: 0, lastTwitch: -9, chum: 5, cloudT: -9, hole: 0, lastChon: -9, chons: 0, snagFails: 0,
       dist: 100, struggling: false, nextSwitch: 0, strugCount: 0, tension: 0, holding: false, breakT: 0, warnT: 0, baraDone: false,
       catch: null, ui: null,
+      lat: 0, landD: 0.5, bailOpen: false, fingerOn: false, castStep: '', hookBtn: null, afterBail: null,
     };
 
     /* ── こうか ── */
@@ -258,19 +321,207 @@ Scenes.fishing = {
       }
     };
 
+    /* ═════ てもと してん ═════ */
+    const fpLayer = st.querySelector('.fp-layer');
+    const fpSvg = fpLayer.querySelector('svg');
+    const FE = id => fpSvg.querySelector('#' + id);
+    const fpLine = FE('fpLine'), fpRod = FE('fpRod'), fpRodTip = FE('fpRodTip'), fpRodLine = FE('fpRodLine');
+    const fpBail = FE('fpBail'), fpFinger = FE('fpFinger'), fpTarget = FE('fpTarget'), fpSpot = FE('fpSpot');
+    const fpSpots = FE('fpSpots'), fpFx = FE('fpFx');
+    const fpSteps = fpLayer.querySelector('.fp-steps');
+    const span = 760 - PIER;
+    const spotD = isDrop ? 0.06 : (spotX - PIER) / span;
+    const spotLat = isDrop ? 0 : (Math.random() - 0.5) * 1.1;
+    const toD = x => Math.max(0, Math.min(1, (x - PIER) / span));
+    const showFP = on => { fpLayer.classList.toggle('off', !on); st.classList.toggle('fp-on', on); };
+
+    // ポイント（とり・あわ）
+    if (!isDrop) {
+      const p = FP.pos(spotD, spotLat);
+      fpSpot.innerHTML = `
+        <g transform="translate(${p.x.toFixed(0)} ${(p.y - 70 * p.k - 30).toFixed(0)}) scale(${(0.6 + p.k).toFixed(2)})">
+          <path class="bird b1" d="M-30 0 q10 -10 20 0 q10 -10 20 0" stroke="#4a4f57" stroke-width="3" fill="none"/>
+          <path class="bird b2" d="M6 -18 q8 -8 16 0 q8 -8 16 0" stroke="#4a4f57" stroke-width="3" fill="none"/>
+        </g>
+        <g class="fp-bubbles"></g>`;
+    }
+    const fpBubbles = fpSpot.querySelector('.fp-bubbles');
+
+    const fpText = (text, x, y, cls = '') => {
+      const tx = document.createElementNS(NS, 'text');
+      tx.setAttribute('x', x); tx.setAttribute('y', y);
+      tx.setAttribute('text-anchor', 'middle');
+      tx.setAttribute('class', 'float-text ' + cls);
+      tx.textContent = text;
+      fpFx.appendChild(tx);
+      setTimeout(() => tx.remove(), 1600);
+    };
+    const fpRipple = (p, big) => {
+      const e = document.createElementNS(NS, 'ellipse');
+      e.setAttribute('cx', p.x); e.setAttribute('cy', p.y);
+      e.setAttribute('rx', (big ? 40 : 22) * p.k + 4); e.setAttribute('ry', (big ? 10 : 6) * p.k + 1.5);
+      e.setAttribute('class', 'ripple');
+      fpFx.appendChild(e);
+      setTimeout(() => e.remove(), 1200);
+    };
+
+    const spotR = () => Math.max(30, Math.min(70, 28 / fpScale));
+    const setSteps = (list, now) => {
+      fpSteps.innerHTML = list.map((t, i) => `<span class="${i < now ? 'done' : i === now ? 'now' : ''}">${t}</span>`).join('');
+    };
+
+    const fpDraw = () => {
+      if (fpLayer.classList.contains('off')) return;
+      let b = s.bendCur;
+      if (s.t < s.shakeUntil) b += Math.sin(s.t * 45) * 0.05;
+      const tip = { x: 430 + b * 160, y: 110 + b * 330 };
+      fpRod.setAttribute('d', `M705 460 Q${(620 + b * 40).toFixed(1)} ${(330 + b * 60).toFixed(1)} ${((705 + tip.x) / 2 + 10).toFixed(1)} ${((460 + tip.y) / 2 - 20 + b * 80).toFixed(1)}`);
+      fpRodTip.setAttribute('d', `M${((705 + tip.x) / 2 + 10).toFixed(1)} ${((460 + tip.y) / 2 - 20 + b * 80).toFixed(1)} Q${((tip.x + 560) / 2).toFixed(1)} ${(tip.y + 70 + b * 40).toFixed(1)} ${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`);
+      fpRodLine.setAttribute('d', `M604 388 L${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`);
+      const open = s.bailOpen || (isDrop && s.phase === 'mode' && s.sub === 'fall');
+      fpBail.setAttribute('d', open ? 'M-50 -6 Q-30 44 -4 26' : 'M-50 -6 Q-36 -46 -4 -30');
+      fpFinger.style.opacity = s.fingerOn ? '1' : '0';
+
+      // しかけの いち
+      let p, dangle = false;
+      if (s.phase === 'look' || s.phase === 'aim') {
+        p = { x: tip.x, y: tip.y + 46, k: 0.5 };
+        dangle = true;
+      } else if (s.phase === 'flying') {
+        const u = s.fu;
+        const q = FP.pos(s.landD * u, s.lat * u);
+        const h = isDrop ? 0 : Math.sin(Math.PI * u) * 170 * (1 - 0.4 * u);
+        p = { x: tip.x + (q.x - tip.x) * Math.min(1, u * 1.3), y: q.y - h - (1 - u) * (q.y - tip.y) * 0.3, k: q.k };
+        dangle = true;
+      } else {
+        p = FP.pos(toD(s.bx), s.lat);
+      }
+      // ウキ・しかけ
+      if (dangle) {
+        fpTarget.innerHTML = useBobber
+          ? `<g transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) scale(${(p.k * 1.4).toFixed(2)})"><rect x="-2" y="-24" width="4" height="13" fill="#e53935"/><path d="M-10 0 A10 10 0 0 1 10 0 Z" fill="#e53935"/><path d="M-10 0 A10 10 0 0 0 10 0 Z" fill="#fff"/></g>`
+          : `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(6 * p.k + 2).toFixed(1)}" fill="${MODE === 'sabiki' ? '#ff9f43' : MODE === 'saguri' ? '#e53935' : MODE === 'lure' ? '#bcd6ee' : '#6b6f76'}"/>`;
+      } else if (useBobber) {
+        const sunk = s.dipCur > 20;
+        const yy = p.y + s.dipCur * p.k * 0.9 + Math.sin(s.t * 2.2) * 1.5 * p.k;
+        fpTarget.innerHTML = `<g transform="translate(${p.x.toFixed(1)} ${yy.toFixed(1)}) scale(${(p.k * 1.4).toFixed(2)})" opacity="${sunk ? 0.35 : 1}">
+            <rect x="-2" y="-24" width="4" height="13" fill="#e53935"/><path d="M-10 0 A10 10 0 0 1 10 0 Z" fill="#e53935"/><path d="M-10 0 A10 10 0 0 0 10 0 Z" fill="#fff" opacity=".5"/></g>
+          <ellipse cx="${p.x.toFixed(1)}" cy="${(p.y + 2).toFixed(1)}" rx="${(16 * p.k + 3).toFixed(1)}" ry="${(4 * p.k + 1).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.5"/>`;
+      } else {
+        fpTarget.innerHTML = `<ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${(14 * p.k + 3).toFixed(1)}" ry="${(3.5 * p.k + 1).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.5"/>`;
+      }
+      const endY = useBobber && !dangle ? p.y - 24 * p.k * 1.4 + s.dipCur * p.k * 0.9 : p.y;
+      const sag = s.phase === 'flying' ? 10 : (s.taut || useBobber ? 18 : 60);
+      fpLine.setAttribute('d', `M${tip.x.toFixed(1)} ${tip.y.toFixed(1)} Q${((tip.x + p.x) / 2).toFixed(1)} ${(Math.max(tip.y, endY) + sag).toFixed(1)} ${p.x.toFixed(1)} ${endY.toFixed(1)}`);
+
+      if (fpBubbles && Math.random() < 0.05) {
+        const q = FP.pos(spotD + (Math.random() - 0.5) * 0.08, spotLat + (Math.random() - 0.5) * 0.25);
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', q.x); c.setAttribute('cy', q.y); c.setAttribute('r', 2 + 3 * q.k);
+        c.setAttribute('class', 'bubble');
+        fpBubbles.appendChild(c);
+        setTimeout(() => c.remove(), 1500);
+      }
+    };
+
+    /* ── なげる じゅんび: ベール → ゆび → スワイプ ── */
+    let gesture = null;
+    const castSteps = () => (isDrop ? ['① ベールを おろす', '② ゆびに いとを かける', '③ ゆびを はなす'] : ['① ベールを おろす', '② ゆびに いとを かける', '③ うえに シュッ!']);
+    const readyPhase = () => {
+      s.phase = 'aim';
+      App.setStep(2);
+      showFP(true);
+      s.bailOpen = false;
+      s.fingerOn = false;
+      s.castStep = 'bail';
+      App.setControls();
+      setSteps(castSteps(), 0);
+      fpSpots.innerHTML = '';
+      App.say(isDrop
+        ? (MODE === 'sabiki'
+          ? (s.first ? 'サビキづりは あしもとに カゴを おとすよ。\nまずは リールの ベール（はりがね）を おろそう。ひかっている ところを タッチ!' : 'エサを つめた カゴを、また おとそう! ベールを おろしてね。')
+          : 'さぐりづりは、あしもとの ブロックの すきま（あな）に おとすよ。\nまずは リールの ベール（はりがね）を おろそう!')
+        : (s.first ? 'とりが とんでいて、あわが でている ところに さかなが いるよ!\nまずは リールの ベール（はりがね）を おろそう。ひかっている ところを タッチ!' : 'もういちど ポイントを ねらって なげよう! ベールを おろしてね。'), 'wow');
+      tapSpot(fpSpots, 600, 372, spotR(), () => {
+        if (s.castStep !== 'bail') return;
+        s.bailOpen = true;
+        s.castStep = 'finger';
+        Sfx.click();
+        setSteps(castSteps(), 1);
+        fpSpots.innerHTML = '';
+        App.say(isDrop
+          ? 'ベールを おろしたら、いとが でないように ひとさしゆびに ひっかけよう。\nゆびの マークを おして… はなすと しかけが おちるよ!'
+          : 'ベールを おろしたら、いとを ひとさしゆびに ひっかけるよ。\nゆびの マークを おしたまま、うえに シュッと スワイプして はなそう!');
+        const spot = tapSpot(fpSpots, 600, 396, spotR(), () => {});
+        spot.classList.add('finger-spot');
+        spot.addEventListener('pointerdown', e => {
+          if (s.castStep !== 'finger') return;
+          s.fingerOn = true;
+          s.castStep = 'swipe';
+          setSteps(castSteps(), 2);
+          gesture = { x: e.clientX, y: e.clientY, t: performance.now() };
+          try { fpSvg.setPointerCapture(e.pointerId); } catch (err) {}
+          Sfx.pop();
+        });
+      });
+    };
+
+    fpSvg.addEventListener('pointerdown', e => {
+      // アワセ: うえに シュッ
+      if (s.phase === 'bite' || (useBobber && s.phase === 'mode')) gesture = { x: e.clientX, y: e.clientY, t: performance.now(), hook: true };
+    });
+    fpSvg.addEventListener('pointerup', e => {
+      if (!gesture) return;
+      const g = gesture;
+      gesture = null;
+      const up = g.y - e.clientY, dx = e.clientX - g.x;
+      const dt = Math.max(16, performance.now() - g.t);
+      if (g.hook) {
+        if (up > 40 && s.hookBtn) { fpText('くいっ!', 430, 90, 'small'); onHook(s.hookBtn); }
+        return;
+      }
+      if (s.castStep !== 'swipe') return;
+      s.fingerOn = false;
+      if (isDrop) {
+        s.castStep = '';
+        s.bailOpen = false; // おちたら ベールは たな/そこで もどす
+        s.lat = 0;
+        s.landD = toD(MODE === 'saguri' ? holes[s.hole].x : PIER + 60);
+        fpSteps.innerHTML = '';
+        fpSpots.innerHTML = '';
+        cast(MODE === 'saguri' ? holes[s.hole].x : PIER + 60);
+        return;
+      }
+      if (up < 50) {
+        s.castStep = 'finger';
+        setSteps(castSteps(), 1);
+        Sfx.oops();
+        App.say('ゆびを はなすのが はやいよ!\nゆびの マークを おしたまま、うえに シュッと スワイプしてね。', 'think');
+        return;
+      }
+      const H = st.clientHeight || 400, W = st.clientWidth || 800;
+      const power = Math.max(0.05, Math.min(1, 0.6 * up / (H * 0.6) + 0.4 * (up / dt) / 2.2));
+      s.lat = Math.max(-1, Math.min(1, dx / (W * 0.3)));
+      s.landD = 0.12 + 0.86 * power;
+      s.castStep = 'fly';
+      fpSteps.innerHTML = '';
+      fpSpots.innerHTML = '';
+      cast(PIER + s.landD * span);
+    });
+
     /* ── うしろを みる ── */
     const look = () => {
       s.phase = 'look';
       App.setStep(2);
-      if (isDrop) { dropReady(); return; }
+      showFP(true);
+      if (isDrop) { readyPhase(); return; }
       App.say('さおを なげる まえに…\nうしろに ひとが いないか みよう!');
       App.setControls(App.btn('👀 うしろを みる', {
         cls: 'big pulse',
         onClick: b => {
           b.disabled = true;
-          kid.classList.add('look-back');
-          App.after(500, () => floatText('だれも いない!', 110, 90, 'ok'));
-          App.after(1400, () => { kid.classList.remove('look-back'); aimPhase(); });
+          fpLayer.classList.add('look-back');
+          App.after(1500, () => { fpLayer.classList.remove('look-back'); readyPhase(); });
         },
       }));
     };
@@ -285,46 +536,9 @@ Scenes.fishing = {
       s.biteX = null;
       shadow.setAttribute('opacity', '0');
       gauge.hidden = true;
+      showFP(true);
       if (msg) App.say(msg);
-      App.after(msg ? 1600 : 0, () => (isDrop ? dropReady() : aimPhase()));
-    };
-
-    /* ── ねらって なげる ── */
-    const aimPhase = () => {
-      s.phase = 'aim';
-      App.setStep(2);
-      App.say(s.first
-        ? 'とりが とんでいて、あわが でている ところに さかなが いるよ!\nきいろい マークが ポイントに きたら なげよう!'
-        : 'もういちど ポイントを ねらって なげよう!', 'wow');
-      aim.setAttribute('opacity', '1');
-      let x = 330, at = 0;
-      const stop = App.loop(dt => {
-        at += dt;
-        x = 330 + (Math.sin(at * 1.6 - Math.PI / 2) + 1) / 2 * 410;
-        aim.setAttribute('transform', `translate(${x.toFixed(1)},${WATER + 4})`);
-      });
-      App.setControls(App.btn('🎣 えいっ! なげる', {
-        cls: 'big',
-        onClick: b => {
-          b.disabled = true;
-          stop();
-          aim.setAttribute('opacity', '0');
-          cast(x);
-        },
-      }));
-    };
-
-    const dropReady = () => {
-      s.phase = 'aim';
-      App.setStep(2);
-      const x = MODE === 'saguri' ? holes[s.hole].x : PIER + 60;
-      App.say(MODE === 'sabiki'
-        ? (s.first ? 'サビキづりは、あしもとに カゴを そっと おとすよ。' : 'エサを つめた カゴを、また そっと おとそう!')
-        : 'さぐりづりは、あしもとの ブロックの すきま（あな）に しかけを おとすよ。');
-      App.setControls(App.btn('⬇️ そっと おとす', {
-        cls: 'big pulse',
-        onClick: b => { b.disabled = true; cast(x); },
-      }));
+      App.after(msg ? 1600 : 0, readyPhase);
     };
 
     const cast = x => {
@@ -333,7 +547,7 @@ Scenes.fishing = {
       s.startX = TIP.x;
       s.startY = TIP.y;
       s.landX = x;
-      s.q = isDrop ? 1 : Math.max(0, 1 - Math.abs(x - spotX) / 170);
+      s.q = isDrop ? 1 : Math.max(0, Math.min(1, 1 - Math.hypot((s.landD - spotD) * 2.5, (s.lat - spotLat) * 1.4)));
       if (!isDrop) {
         rod.classList.remove('swing');
         void rod.getBoundingClientRect();
@@ -348,15 +562,28 @@ Scenes.fishing = {
       Sfx.splash();
       ripple(s.bx, WATER, true);
       splash(s.bx);
+      const fp = FP.pos(s.landD, s.lat);
+      fpRipple(fp, true);
       let msg = '';
       if (!isDrop) {
-        if (s.q > 0.75) { msg = 'どんぴしゃ! '; floatText('どんぴしゃ!', s.bx, WATER - 50, 'big'); Sfx.good(); }
+        if (s.q > 0.75) { msg = 'どんぴしゃ! '; fpText('どんぴしゃ!', fp.x, fp.y - 40, 'big'); Sfx.good(); }
         else if (s.q > 0.35) msg = 'おしい! ポイントの ちかくだよ。';
         else msg = 'ポイントから すこし はなれちゃった。';
       }
       const start = { uki: startUki, choinage: startChoi, lure: startLure, sabiki: startSabiki, saguri: startSaguri }[MODE];
-      start(msg);
       s.first = false;
+      if (isDrop) { start(msg); return; }
+      // なげたら ベールを もどして いとを とめる
+      s.phase = 'mode';
+      s.sub = 'bail';
+      App.say(msg + '\nちゃくすい! ベールを もどして、いとが でないように しよう。ひかっている ところを タッチ!', 'wow');
+      tapSpot(fpSpots, 600, 372, spotR(), () => {
+        s.bailOpen = false;
+        fpSpots.innerHTML = '';
+        Sfx.click();
+        s.sub = '';
+        start(msg);
+      });
     };
 
     /* ── アタリ（どの つりかたも おなじ） ── */
@@ -366,7 +593,8 @@ Scenes.fishing = {
       s.hold = false;
       App.setStep(3);
       const r = ++s.round;
-      const hookBtn = App.btn('✊ あわせる!', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
+      const hookBtn = App.btn('✊ あわせる! <small>うえに シュッ</small>', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
+      s.hookBtn = hookBtn;
       App.setControls(hookBtn);
       s.biteX = s.bx;
       let tt = 300 + Math.random() * 500;
@@ -382,14 +610,18 @@ Scenes.fishing = {
       s.bite = 'nibble';
       Sfx.nibble();
       const c = cuePos();
+      const fp = FP.pos(toD(s.bx), s.lat);
       if (useBobber) {
         s.dip = 9;
         ripple(s.bx);
+        fpRipple(fp);
         App.after(200, () => { if (s.bite === 'nibble') s.dip = 0; });
         floatText('ちょん', c.x + 30, c.y, 'small');
+        fpText('ちょん', fp.x + 40, fp.y - 30, 'small');
       } else {
         s.shakeUntil = s.t + 0.45;
         floatText('ぷるぷる', c.x, c.y, 'small');
+        fpText('ぷるぷる', 470, 80, 'small');
       }
     };
 
@@ -398,16 +630,22 @@ Scenes.fishing = {
       s.sinkT = s.t;
       Sfx.sink();
       const c = cuePos();
+      const fp = FP.pos(toD(s.bx), s.lat);
       if (useBobber) {
         s.dip = 30;
         ripple(s.bx, WATER, true);
+        fpRipple(fp, true);
         floatText('ぐぐーっ!', c.x, c.y - 5, 'big');
+        fpText('ぐぐーっ!', fp.x, fp.y - 50, 'big');
       } else {
         s.bend = 0.32;
         floatText('ぐいーっ!', c.x + 20, c.y, 'big');
+        fpText('ぐいーっ!', 520, 120, 'big');
       }
       hookBtn.classList.add('now');
-      hookBtn.innerHTML = '✊ いまだ! あわせる!';
+      hookBtn.innerHTML = '✊ いまだ! あわせる! <small>うえに シュッ</small>';
+      fpLayer.querySelector('.fp-flash').classList.add('on');
+      App.after(500, () => fpLayer.querySelector('.fp-flash').classList.remove('on'));
       // あわせる じかんは みじかめ（#9）
       App.after(2200, () => {
         if (s.round !== r || s.phase !== 'bite') return;
@@ -446,6 +684,7 @@ Scenes.fishing = {
       s.hold = false;
       Sfx.strain();
       floatText('ねがかり!', s.bx, s.by - 30, 'big');
+      fpText('ねがかり!', 430, 160, 'big');
       App.say('ねがかり! そこの いわに ひっかかっちゃった。\nむりに ひっぱらず、さおを あおって はずそう!', 'think');
       App.setControls(App.btn('💪 さおを あおる', {
         cls: 'big',
@@ -476,6 +715,7 @@ Scenes.fishing = {
       Sfx.strain();
       Sfx.oops();
       floatText('ぷつん!', TIP.x + 60, TIP.y, 'big');
+      fpText('ぷつん!', 430, 140, 'big');
       shadow.setAttribute('opacity', '0');
       weight.setAttribute('opacity', '0');
       bob.style.display = 'none';
@@ -507,7 +747,8 @@ Scenes.fishing = {
       App.setStep(3);
       s.biteX = null;
       const r = ++s.round;
-      const hookBtn = App.btn('✊ あわせる!', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
+      const hookBtn = App.btn('✊ あわせる! <small>うえに シュッ</small>', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
+      s.hookBtn = hookBtn;
       App.setControls(hookBtn);
       if (msg !== undefined) App.say(msg + '\nウキが ぐーっと しずんだら すぐ「あわせる!」', 'wow');
       const wait = ((msg !== undefined ? 4500 : 2500) + Math.random() * 2000) * (1.4 - 0.8 * s.q);
@@ -710,7 +951,7 @@ Scenes.fishing = {
                 gauge.hidden = true;
                 s.phase = 'look';
                 s.bx = TIP.x; s.by = TIP.y + 30;
-                dropReady();
+                readyPhase();
               },
             }));
           }
@@ -806,6 +1047,8 @@ Scenes.fishing = {
       s.phase = 'reel';
       s.biteX = null;
       s.hold = false;
+      s.hookBtn = null;
+      showFP(false);
       App.setStep(4);
       s.catch = decideCatch();
       s.dist = 100;
@@ -972,9 +1215,11 @@ Scenes.fishing = {
         reelUpdate(dt);
       }
       draw();
+      fpDraw();
     });
 
     draw();
+    fpDraw();
     look();
     return () => {
       window.removeEventListener('resize', fit);
