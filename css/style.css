@@ -533,16 +533,45 @@ button { font-family: inherit; font-weight: 800; color: inherit; cursor: pointer
 .fp-layer { position: absolute; inset: 0; z-index: 1; background: linear-gradient(#7cc8f7 50%, #a8743f 50%); transition: opacity .5s; overflow: hidden; border-radius: inherit; }
 .fp-layer.off { opacity: 0; pointer-events: none; }
 .fp-svg { width: 100%; height: 100%; display: block; touch-action: none; }
-.fp-layer.look-back .fp-svg { animation: lookback 1.5s ease-in-out; }
-.fp-layer.look-back::after { content: '👀 うしろ… だれも いない! OK!'; position: absolute; left: 50%; top: 40%; transform: translateX(-50%); background: rgba(255,255,255,.92); border-radius: 999px; padding: 8px 20px; font-size: clamp(18px, 3vw, 26px); color: var(--green-d); white-space: nowrap; animation: pop .4s .4s both; }
-@keyframes lookback { 0%, 100% { transform: none; filter: none; } 30%, 70% { transform: translateX(-30%) scale(1.15); filter: blur(2px) brightness(.9); } }
-.fp-steps { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 96%; pointer-events: none; }
-.fp-steps span { font-size: clamp(12px, 1.8vw, 16px); background: rgba(255,255,255,.8); color: #8a7d72; border-radius: 999px; padding: 3px 12px; }
-.fp-steps span.now { background: var(--orange); color: #fff; animation: pulse 1s infinite; }
-.fp-steps span.done { background: #d8f5e6; color: var(--green-d); }
 .fp-flash { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 0 0 rgba(239,91,91,0); transition: box-shadow .2s; }
 .fp-flash.on { box-shadow: inset 0 0 0 10px rgba(239,91,91,.7); }
 .finger-spot { fill: rgba(255,138,61,.35); stroke: #ff8a3d; }
 .stage-sea .sea-hud, .stage-sea .depth-gauge { z-index: 2; }
 .hook-btn small { display: block; font-size: .55em; opacity: .9; }
 .stage-sea.fp-on .depth-gauge { top: 48px !important; bottom: 44px !important; height: auto !important; }
+
+/* ── さんにんしょう・ワイプ・リール（なげる〜やりとり） ── */
+.tp-layer { position: absolute; inset: 0; z-index: 2; transition: opacity .5s; background: linear-gradient(#7cc8f7 50%, #b98451 50%); border-radius: inherit; overflow: hidden; }
+.tp-layer.off { opacity: 0; pointer-events: none; }
+.tp-svg { width: 100%; height: 100%; display: block; touch-action: none; }
+.tp-surprise { font-family: var(--font); font-weight: 800; font-size: 34px; fill: #ffd54a; stroke: #c0392b; stroke-width: 6px; paint-order: stroke; }
+.wipe { position: absolute; z-index: 3; top: 10px; left: 10px; width: min(48%, 400px); max-height: 62%; aspect-ratio: 220 / 140; border-radius: 16px; overflow: hidden; border: 4px solid #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, .3); background: #1f78c4; pointer-events: none; }
+.wipe[hidden] { display: none; }
+.wipe-in, .wipe-in svg { width: 100%; height: 100%; display: block; }
+.wipe-lbl, .wipe-depth { position: absolute; font-size: 12px; background: rgba(255, 255, 255, .85); border-radius: 999px; padding: 1px 8px; }
+.wipe-lbl { top: 4px; left: 6px; }
+.wipe-depth { bottom: 4px; right: 6px; }
+.wipe-text { font-size: 18px; stroke-width: 4px; }
+.wipe-text.big { font-size: 24px; }
+.tana-lbl { font-size: 12px; fill: #ffd54a; }
+.reel-panel { position: absolute; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); height: min(90%, 330px); max-width: 92%; display: flex; flex-direction: column; align-items: center; background: #fffaf0; border-radius: 22px; box-shadow: 0 8px 24px rgba(0, 0, 0, .35); padding: 8px; touch-action: none; animation: panelpop .3s; }
+@keyframes panelpop { from { transform: translate(-50%, -50%) scale(.9); opacity: 0; } to { transform: translate(-50%, -50%); opacity: 1; } }
+.reel-panel[hidden] { display: none; }
+.reel-svg { flex: 1; min-height: 0; height: 100%; width: auto; max-width: 100%; aspect-ratio: 320 / 210; display: block; }
+.reel-svg .bail { transform-box: view-box; transform-origin: 200px 154px; transition: transform .35s ease; }
+.reel-panel.open .reel-svg .bail { transform: rotate(140deg); }
+.reel-hint { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: clamp(15px, 2.2vw, 20px); padding: 4px 0 2px; }
+.reel-arrow { width: 34px; height: 34px; border-radius: 50%; background: var(--orange); position: relative; }
+.reel-arrow::after { content: '👆'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 20px; }
+.reel-arrow.down { animation: swdown 1s ease-in-out infinite; }
+.reel-arrow.up { animation: swup 1s ease-in-out infinite; }
+@keyframes swdown { 0% { transform: translateY(-8px); } 100% { transform: translateY(10px); opacity: .3; } }
+@keyframes swup { 0% { transform: translateY(8px); } 100% { transform: translateY(-10px); opacity: .3; } }
+.cast-steps { position: absolute; z-index: 4; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; width: 96%; pointer-events: none; }
+.cast-steps span { font-size: clamp(12px, 1.8vw, 16px); background: rgba(255, 255, 255, .85); color: #8a7d72; border-radius: 999px; padding: 3px 12px; }
+.cast-steps span.now { background: var(--orange); color: #fff; animation: pulse 1s infinite; }
+.cast-steps span.done { background: #d8f5e6; color: var(--green-d); }
+.stage-sea .sea-hud { z-index: 4; }
+.hole-eye { animation: blink 3s infinite; }
+@keyframes blink { 0%, 92%, 100% { opacity: 1; } 95% { opacity: 0; } }
+@media (max-width: 600px) { .wipe { width: 64%; } .reel-panel { height: auto; width: 88%; } .reel-svg { width: 100%; height: auto; flex: none; } }

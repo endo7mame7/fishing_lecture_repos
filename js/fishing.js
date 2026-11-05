@@ -1,23 +1,31 @@
 /* つり と つれた ばめん
 
-   つりかたごとに あそびかたが ちがう（#8 #10）
-   - ウキづり:   ねらって なげる → ウキを みて あわせる
-   - ちょいなげ: ねらって なげる → そこに ついたら いとふけを とる → ゆっくり ひいて（サビいて）さそう。いわに ねがかり ちゅうい
-   - ルアー:     ねらって なげる → かぞえて しずめ、むれの ふかさで まく → しゃくって さそう → もどってきたら かいしゅう
-   - サビキ:     あしもとに おとす → むれの ふかさ（たな）で とめる → しゃくって エサを だす → なくなったら まきあげて つめなおす
-   - さぐりづり: あなに おとす → ゆっくり ちょんちょん しゃくって さそう → いなければ となりの あなへ
+   ながれ（どの つりかたも おなじ）
+   1. なげる（さんにんしょう）: うしろから つりびとを みる。うしろを ひとが とおるので、いない ときに なげる
+      ① リールを よこから みて、ベールを したに スワイプして おろす
+      ② うえに スワイプして なげる（サビキ・さぐりは したに スワイプして あしもとに おとす）
+   2. しずむ（てもと＋ワイプ）: しかけは ねらいの たなまで じどうで しずむ。ワイプで うみの なかが みえる
+      たなに ついたら、ベールを うえに スワイプして もどす
+   3. つり（てもと＋ワイプ）: つりかたごとに さそう。ワイプで さかなが エサを たべる ようすが みえる
+      ぱくっと たべたら、うえに スワイプして あわせる
+   4. やりとり（てもと＋ワイプ）: おして まく。いとが あかい ときや あばれた ときは てを はなす
 
-   むずかしさ（#9）: あわせる じかんは みじかめ。まいている ときに いとが あかい ままだと きれる。ときどき バレる。
+   つりかたごとの さそいかた（#8 #10）
+   - ウキづり:   ウキが しずんだら あわせる
+   - ちょいなげ: ボタンを おして ゆっくり ひく（サビく）。いわに ねがかり ちゅうい
+   - ルアー:     おして まく・はなすと しずむ・「しゃくる」で さそう
+   - サビキ:     「しゃくる」で カゴから エサを だす。なくなったら まきあげて つめなおす
+   - さぐりづり: ゆっくり「ちょんちょん」。いなければ となりの あなへ
 */
 
-/* ───────── てもと してん（なげる〜アワセ） ─────────
-   d: きょり（0=あしもと 1=おき）、lat: よこ（-1=ひだり 1=みぎ）を がめんの いちに する */
+/* ───────── てもと してん ─────────
+   d: きょり（0=あしもと 1=おき）、lat: よこ（-1=ひだり 1=みぎ） */
 const FP = {
   pos(d, lat = 0) {
     const t = 1 - Math.max(0, Math.min(1, d));
     return { x: 400 + lat * (40 + 380 * t * t), y: 150 + 285 * t * t, k: 0.15 + 0.85 * t * t };
   },
-  svg(isDrop) {
+  svg() {
     let waves = '';
     for (let i = 0; i < 18; i++) {
       const d = (i % 6) / 6 + 0.05, lat = ((i * 37) % 19) / 9.5 - 1;
@@ -25,7 +33,7 @@ const FP = {
       waves += `<path d="M${(p.x - w).toFixed(0)} ${p.y.toFixed(0)} q${(w / 2).toFixed(0)} ${(-4 * p.k - 1).toFixed(1)} ${w.toFixed(0)} 0 t${w.toFixed(0)} 0"/>`;
     }
     return `
-<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" class="fp-svg">
+<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" class="fp-svg view-svg">
   <defs>
     <linearGradient id="fpSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc8f7"/><stop offset="1" stop-color="#e3f6ff"/></linearGradient>
     <linearGradient id="fpSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4aa6dc"/><stop offset="1" stop-color="#16609f"/></linearGradient>
@@ -39,6 +47,7 @@ const FP = {
   <g class="fp-waves" stroke="#fff" stroke-opacity=".45" stroke-width="2" fill="none" stroke-linecap="round">${waves}</g>
   <g id="fpSpot"></g>
   <g id="fpTarget"></g>
+  <g id="fpJump"></g>
   <path id="fpLine" fill="none" stroke="#f4f4f4" stroke-width="1.6" opacity=".95"/>
   <rect x="-2000" y="418" width="4800" height="400" fill="#a8743f"/>
   <path d="M-2000 418 H2800" stroke="#8a5c30" stroke-width="4"/>
@@ -46,22 +55,105 @@ const FP = {
   <path id="fpRodLine" fill="none" stroke="#f4f4f4" stroke-width="1.4" opacity=".9"/>
   <path id="fpRod" fill="none" stroke="url(#fpRodG)" stroke-width="7" stroke-linecap="round"/>
   <path id="fpRodTip" fill="none" stroke="#1d4a78" stroke-width="3.5" stroke-linecap="round"/>
-  <g id="fpReel" transform="translate(640 392)">
+  <g transform="translate(640 392)">
     <path d="M10 -26 L22 -48" stroke="#555" stroke-width="7" stroke-linecap="round"/>
     <circle r="32" fill="#4a4f57"/><circle r="14" fill="#6b7078"/>
     <ellipse cx="-36" cy="-6" rx="13" ry="25" fill="#7fd88a" stroke="#3b7d4a" stroke-width="2"/>
     <path d="M28 8 h24" stroke="#333" stroke-width="6" stroke-linecap="round"/><circle cx="56" cy="8" r="8" fill="#333"/>
     <path id="fpBail" fill="none" stroke="#d6dbe0" stroke-width="5" stroke-linecap="round"/>
   </g>
-  <g id="fpHand">
-    <path d="M700 470 Q660 420 700 395 Q750 380 790 420 L800 470 Z" fill="#f2c49b"/>
-    <path id="fpFinger" d="M690 405 Q650 392 612 388" stroke="#f2c49b" stroke-width="16" stroke-linecap="round" fill="none"/>
-  </g>
-  <g id="fpSpots"></g>
+  <path d="M700 470 Q660 420 700 395 Q750 380 790 420 L800 470 Z" fill="#f2c49b"/>
   <g id="fpFx"></g>
 </svg>`;
   },
 };
+
+/* ───────── さんにんしょう（なげる ところ） ───────── */
+const TP = {
+  pos(d, lat = 0) {
+    const t = 1 - Math.max(0, Math.min(1, d));
+    return { x: 400 + lat * (60 + 300 * t * t), y: 178 + 150 * t * t, k: 0.2 + 0.8 * t * t };
+  },
+  svg() {
+    return `
+<svg viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" class="tp-svg view-svg">
+  <defs>
+    <linearGradient id="tpSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7cc8f7"/><stop offset="1" stop-color="#e3f6ff"/></linearGradient>
+    <linearGradient id="tpSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4aa6dc"/><stop offset="1" stop-color="#1d6fb8"/></linearGradient>
+  </defs>
+  <rect x="-2000" width="4800" height="180" fill="url(#tpSky)"/>
+  <circle cx="660" cy="70" r="30" fill="#ffd54a"/>
+  <g fill="#fff" opacity=".9" class="cloud"><ellipse cx="220" cy="70" rx="50" ry="15"/><ellipse cx="250" cy="58" rx="28" ry="16"/></g>
+  <path d="M80 178 Q130 150 190 178 Z" fill="#7cc58a"/>
+  <rect x="-2000" y="176" width="4800" height="170" fill="url(#tpSea)"/>
+  <g stroke="#fff" stroke-opacity=".5" stroke-width="2" fill="none" stroke-linecap="round">
+    <path d="M300 200 q8 -4 16 0 t16 0"/><path d="M520 215 q10 -5 20 0 t20 0"/><path d="M180 240 q12 -6 24 0 t24 0"/>
+    <path d="M620 260 q14 -6 28 0 t28 0"/><path d="M360 285 q16 -7 32 0 t32 0"/>
+  </g>
+  <g id="tpSpot"></g>
+  <g id="tpFly"></g>
+  <path d="M-2000 330 L2800 330 L2800 800 L-2000 800 Z" fill="#b98451"/>
+  <path d="M-2000 330 H2800" stroke="#8a5c30" stroke-width="5"/>
+  <path d="M-2000 380 H2800 M-2000 430 H2800" stroke="#a5713f" stroke-width="2"/>
+  <path d="M250 330 L180 450 M400 330 L400 450 M550 330 L620 450" stroke="#a5713f" stroke-width="2"/>
+  <g id="tpKid">
+    <ellipse cx="400" cy="338" rx="38" ry="7" fill="#00000022"/>
+    <rect x="382" y="292" width="13" height="46" rx="6" fill="#3b5ba5"/><rect x="405" y="292" width="13" height="46" rx="6" fill="#3b5ba5"/>
+    <rect x="368" y="232" width="64" height="70" rx="20" fill="#ff8a3d"/>
+    <path d="M380 236 V296 M420 236 V296" stroke="#ffd54a" stroke-width="5"/>
+    <circle cx="400" cy="212" r="24" fill="#6b4a2e"/>
+    <path d="M374 210 Q400 176 426 210 Z" fill="#4caf7a"/><rect x="370" y="205" width="60" height="9" rx="4" fill="#3d9466"/>
+    <path d="M428 248 L446 262" stroke="#ff8a3d" stroke-width="14" stroke-linecap="round"/>
+    <path d="M372 248 L420 266" stroke="#ff8a3d" stroke-width="14" stroke-linecap="round"/>
+  </g>
+  <g id="tpRod">
+    <path d="M446 266 L560 120" stroke="#2f6fb0" stroke-width="6" stroke-linecap="round"/>
+    <path d="M560 120 L590 82" stroke="#1d4a78" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="452" cy="276" r="11" fill="#4a4f57"/>
+  </g>
+  <path id="tpLine" fill="none" stroke="#f4f4f4" stroke-width="1.5"/>
+  <circle cx="446" cy="264" r="9" fill="#f2c49b"/>
+  <g id="tpPeople"></g>
+  <g id="tpFx"></g>
+</svg>`;
+  },
+  // とおる ひと（つりびとの うしろを あるくので おおきく みえる）
+  person(v, walk, surprised) {
+    const leg = Math.sin(walk) * 16;
+    const c = v === 0 ? { body: '#8e6ccf', hat: '#e53935', skin: '#f6d2b0' } : { body: '#43a5a0', hat: '#ffd54a', skin: '#e9b88f' };
+    const arms = surprised
+      ? `<path d="M-24 -100 L-44 -142 M24 -100 L44 -142" stroke="${c.body}" stroke-width="13" stroke-linecap="round"/>`
+      : `<path d="M-24 -100 L${(-30 + leg * 0.4).toFixed(1)} -56 M24 -100 L${(30 - leg * 0.4).toFixed(1)} -56" stroke="${c.body}" stroke-width="13" stroke-linecap="round"/>`;
+    const face = surprised
+      ? '<circle cx="6" cy="-150" r="3" fill="#222"/><circle cx="18" cy="-150" r="3" fill="#222"/><ellipse cx="12" cy="-137" rx="4" ry="6" fill="#7a2e2e"/>'
+      : '<circle cx="10" cy="-150" r="3" fill="#222"/><path d="M4 -138 q6 4 12 0" stroke="#222" stroke-width="2" fill="none"/>';
+    return `
+      <ellipse cx="0" cy="2" rx="34" ry="7" fill="#00000026"/>
+      <path d="M-8 -50 L${(-8 - leg).toFixed(1)} 0 M8 -50 L${(8 + leg).toFixed(1)} 0" stroke="#3a3a46" stroke-width="15" stroke-linecap="round"/>
+      <rect x="-28" y="-118" width="56" height="74" rx="18" fill="${c.body}"/>
+      ${arms}
+      <circle cx="0" cy="-146" r="24" fill="${c.skin}"/>
+      <path d="M-26 -152 Q0 -186 26 -152 Z" fill="${c.hat}"/>
+      ${face}`;
+  },
+};
+
+/* リールを よこから みた え（ベールを スワイプで うごかす） */
+const REEL_PANEL = `
+<svg viewBox="0 0 320 210" class="reel-svg">
+  <rect x="0" y="0" width="320" height="210" rx="20" fill="#fffaf0"/>
+  <path d="M10 40 H310" stroke="#2f6fb0" stroke-width="12" stroke-linecap="round"/>
+  <path d="M10 40 H80" stroke="#c9a26b" stroke-width="16" stroke-linecap="round"/>
+  <path d="M150 46 V82" stroke="#555" stroke-width="10"/>
+  <circle cx="150" cy="122" r="46" fill="#4a4f57"/><circle cx="150" cy="122" r="18" fill="#6b7078"/>
+  <path d="M106 122 h-26" stroke="#333" stroke-width="8" stroke-linecap="round"/><circle cx="76" cy="122" r="10" fill="#333"/>
+  <rect x="196" y="92" width="34" height="62" rx="10" fill="#7fd88a" stroke="#3b7d4a" stroke-width="3"/>
+  <path d="M200 104 H226 M200 116 H226 M200 128 H226 M200 140 H226" stroke="#3b7d4a" stroke-width="1.5"/>
+  <path d="M226 100 L300 42" stroke="#9aa4ad" stroke-width="2"/>
+  <g class="bail"><path d="M200 154 Q275 122 200 88" stroke="#9aa4ad" stroke-width="7" fill="none" stroke-linecap="round"/><circle cx="200" cy="154" r="7" fill="#8a949d"/><circle cx="200" cy="88" r="7" fill="#8a949d"/></g>
+  <text x="250" y="196" text-anchor="middle" class="svg-lbl">ベール</text>
+</svg>
+<div class="reel-hint"><span class="reel-arrow"></span><span class="reel-txt"></span></div>`;
 
 // きょう つった かず（ページを ひらいている あいだ）
 const Today = { fish: 0, junk: 0 };
@@ -77,86 +169,67 @@ Scenes.fishing = {
 
     const st = App.stage;
     st.classList.add('stage-sea');
-    st.innerHTML = Art.seaScene() + `
-      <div class="sea-hud">きょう 🐟 ${Today.fish}ひき${Today.junk ? ` ・ 🗑️ ${Today.junk}こ` : ''}</div>
-      <div class="fp-layer">${FP.svg(isDrop)}<div class="fp-steps"></div><div class="fp-flash"></div></div>
-      <div class="depth-gauge" hidden><span class="dg-lbl">ふかさ</span><div class="dg-col"><span class="dg-fish">🐟</span><span class="dg-hook"></span></div></div>`;
-    const svg = st.querySelector('svg');
-    const E = id => svg.querySelector('#' + id);
+    st.innerHTML = `
+      <div class="fp-layer">${FP.svg()}<div class="fp-flash"></div></div>
+      <div class="tp-layer">${TP.svg()}</div>
+      <div class="wipe" hidden><div class="wipe-in">${Art.seaScene()}</div><span class="wipe-lbl">🔍 うみの なか</span><span class="wipe-depth"></span></div>
+      <div class="reel-panel" hidden>${REEL_PANEL}</div>
+      <div class="cast-steps"></div>
+      <div class="sea-hud">きょう 🐟 ${Today.fish}ひき${Today.junk ? ` ・ 🗑️ ${Today.junk}こ` : ''}</div>`;
 
-    let fpScale = 1; // てもと してんの え 1たんいが がめんで なんpx か
-    // よこながの がめんでは いっぱいに ひろげ、たてながでは うえと したに そらと うみを のばす
+    const NS = 'http://www.w3.org/2000/svg';
+    const q$ = sel => st.querySelector(sel);
+    const fpLayer = q$('.fp-layer'), tpLayer = q$('.tp-layer'), wipe = q$('.wipe'), panel = q$('.reel-panel');
+    const fpSvg = fpLayer.querySelector('svg'), tpSvg = tpLayer.querySelector('svg');
+    const wSvg = wipe.querySelector('svg');
+    const stepsEl = q$('.cast-steps'), depthEl = q$('.wipe-depth');
+
+    /* ── うみの なかの いち: x = ていぼうからの きょり、y = ふかさ ── */
+    const WATER = 240, PIER = 218, BOTTOM = 362, FAR = 760, SPAN = FAR - PIER;
+    const toD = x => Math.max(0, Math.min(1, (x - PIER) / SPAN));
+    const depthM = y => Math.max(0, Math.round((y - WATER) / 30));
+
+    // がめんの おおきさに あわせて みえる はばを かえる
     const fit = () => {
       const W = st.clientWidth, H = st.clientHeight;
       if (!W || !H) return;
-      const wide = W / H >= 800 / 450;
-      svg.setAttribute('preserveAspectRatio', wide ? 'xMidYMid slice' : 'xMidYMid meet');
-      if (!wide) {
-        const sc = W / 800;
-        const split = (H / 2 + (241 - 225) * sc) / H * 100;
-        st.style.background = `linear-gradient(#8fd3ff 0, #dff5ff ${split}%, #3f9fdc ${split}%, #1a68b0 100%)`;
-      } else {
-        st.style.background = '';
-      }
-      // ふかさ メーターを、えの うみの ひょうめん〜そこに ぴったり あわせる
-      const sc = wide ? Math.max(W / 800, H / 450) : Math.min(W / 800, H / 450);
-      const offY = (H - 450 * sc) / 2;
-      // てもと してん: よこながなら みえる はばを ひろげ、たてながなら そのまま（リールと てが かならず みえる）
-      const fsvg = st.querySelector('.fp-svg');
-      if (fsvg) {
-        const vw = Math.max(800, 450 * W / H);
-        fsvg.setAttribute('viewBox', `${(400 - vw / 2).toFixed(1)} 0 ${vw.toFixed(1)} 450`);
-        fpScale = Math.min(W / vw, H / 450);
-      }
-      const g = st.querySelector('.depth-gauge');
-      const top = Math.max(4, offY + WATER * sc - 22);
-      g.style.top = top + 'px';
-      g.style.bottom = 'auto';
-      g.style.height = (offY + BOTTOM * sc - top) + 'px';
+      const vw = Math.max(800, 450 * W / H);
+      [fpSvg, tpSvg].forEach(v => v.setAttribute('viewBox', `${(400 - vw / 2).toFixed(1)} 0 ${vw.toFixed(1)} 450`));
     };
-
-    const line = E('line'), bob = E('bobber'), weight = E('weight');
-    const shadow = E('fishShadow'), shadowInner = E('fishShadowInner');
-    const kid = E('kid'), rod = E('rod'), fx = E('fx');
-    const schoolG = E('school'), spotG = E('spot'), aim = E('aim'), jumper = E('jumper');
-    const gauge = st.querySelector('.depth-gauge');
-    const NS = 'http://www.w3.org/2000/svg';
-
-    const BASE = { x: 166, y: 178 };
-    const ROD = { x: 96, y: -66 };
-    const WATER = 240;
-    const PIER = 218;
-    const BOTTOM = 362; // うみの そこ（よこながの がめんでも みえる たかさ）
     fit();
     window.addEventListener('resize', fit);
 
-    // しかけの みため
+    /* ── ワイプ（うみの なか）の じゅんび ── */
+    const W$ = id => wSvg.querySelector('#' + id);
+    ['kid', 'rod', 'aim'].forEach(id => { const e = W$(id); if (e) e.style.display = 'none'; });
+    wSvg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+    const wLine = W$('line'), wBob = W$('bobber'), weight = W$('weight'), hookedG = W$('fishShadow'), hookedIn = W$('fishShadowInner');
+    const schoolG = W$('school'), wFx = W$('fx');
     weight.insertAdjacentHTML('beforeend', `
-      <g class="w-basket"><path d="M0 -24 V-10" stroke="#555" stroke-width="1.5"/><rect x="-9" y="-11" width="18" height="20" rx="3" fill="#ff9f43" stroke="#d07a20" stroke-width="2"/>
-        <path d="M0 9 V40" stroke="#555" stroke-width="1"/><circle cx="-6" cy="18" r="2.5" fill="#ff7eb6"/><circle cx="6" cy="27" r="2.5" fill="#ff7eb6"/><circle cx="-6" cy="36" r="2.5" fill="#ff7eb6"/></g>`);
+      <g class="w-basket"><rect x="-9" y="-11" width="18" height="20" rx="3" fill="#ff9f43" stroke="#d07a20" stroke-width="2"/>
+        <path d="M0 9 V40" stroke="#555" stroke-width="1"/><circle cx="-6" cy="18" r="2.5" fill="#ff7eb6"/><circle cx="6" cy="27" r="2.5" fill="#ff7eb6"/><circle cx="-6" cy="36" r="2.5" fill="#ff7eb6"/></g>
+      <g class="w-bait"><path d="M0 -6 v8 q0 6 -5 6 q-5 0 -5 -5" stroke="#8a949d" stroke-width="2" fill="none"/><circle cx="-2" cy="6" r="5" fill="${Loadout.gear.bait === 'okiami' ? '#f48a9c' : '#b5533c'}"/></g>`);
     const showWeight = kind => {
-      weight.querySelector('.w-sinker').style.display = kind === 'sinker' || kind === 'burakuri' ? '' : 'none';
-      weight.querySelector('.w-lure').style.display = kind === 'lure' ? '' : 'none';
-      weight.querySelector('.w-basket').style.display = kind === 'basket' ? '' : 'none';
+      ['w-sinker', 'w-lure', 'w-basket', 'w-bait'].forEach(c => { weight.querySelector('.' + c).style.display = 'none'; });
+      const on = { sinker: ['w-sinker', 'w-bait'], burakuri: ['w-sinker', 'w-bait'], lure: ['w-lure'], basket: ['w-basket'], bait: ['w-bait'] }[kind];
+      on.forEach(c => { weight.querySelector('.' + c).style.display = ''; });
       weight.querySelector('.w-sinker').setAttribute('fill', kind === 'burakuri' ? '#e53935' : '#6b6f76');
     };
-    showWeight({ choinage: 'sinker', lure: 'lure', sabiki: 'basket', saguri: 'burakuri', uki: 'none' }[MODE]);
-    bob.style.display = useBobber ? '' : 'none';
-    weight.setAttribute('opacity', useBobber ? '0' : '1');
+    showWeight({ choinage: 'sinker', lure: 'lure', sabiki: 'basket', saguri: 'burakuri', uki: 'bait' }[MODE]);
+    weight.setAttribute('opacity', '1');
+    wBob.style.display = useBobber ? '' : 'none';
+    const leader = document.createElementNS(NS, 'path');
+    leader.setAttribute('stroke', '#3c3c3c'); leader.setAttribute('stroke-width', '1.2'); leader.setAttribute('fill', 'none');
+    wLine.parentNode.insertBefore(leader, wLine);
 
-    const rodPoint = (a, k = 1) => ({
-      x: BASE.x + k * (ROD.x * Math.cos(a) - ROD.y * Math.sin(a)),
-      y: BASE.y + k * (ROD.x * Math.sin(a) + ROD.y * Math.cos(a)),
-    });
-    let TIP = rodPoint(0);
-
-    /* ── つりばの じゅんび（ポイント・むれ・いわ・あな） ── */
-    const spotX = isDrop ? PIER + 80 : 430 + Math.random() * 260;
-    let tana; // さかなの いる ふかさ
+    /* ── つりばの せってい ── */
+    const spotD = isDrop ? 0.08 : 0.4 + Math.random() * 0.45;
+    const spotLat = isDrop ? 0 : (Math.random() - 0.5) * 1.1;
+    const spotX = isDrop ? PIER + 80 : PIER + spotD * SPAN;
+    let tana;
     if (MODE === 'sabiki' || MODE === 'lure') tana = WATER + 40 + Math.random() * 70;
-    else if (MODE === 'uki') tana = WATER + 42;
+    else if (MODE === 'uki') tana = WATER + 55;
     else tana = BOTTOM - 14;
-    const depthM = y => Math.max(0, Math.round((y - WATER) / 30));
 
     const rocks = MODE === 'choinage'
       ? [spotX - 80 - Math.random() * 50, spotX + 60 + Math.random() * 50].filter(x => x > PIER + 100 && x < 770)
@@ -168,90 +241,103 @@ Scenes.fishing = {
       if (Math.random() < 0.4) holes[(k + 1 + Math.floor(Math.random() * 2)) % 3].fish = true;
     }
 
-    // うみの そこ・いわ
+    // うみの そこ・いわ・あな（さかなが いる あなは めが ひかる）・たなの せん
     const bed = document.createElementNS(NS, 'g');
     bed.innerHTML = `<path d="M0 ${BOTTOM + 8} Q200 ${BOTTOM} 400 ${BOTTOM + 6} T800 ${BOTTOM + 4} V450 H0 Z" fill="#d9c38f"/>`
       + rocks.map(x => `<ellipse cx="${x}" cy="${BOTTOM + 4}" rx="24" ry="14" fill="#6d6a62"/><ellipse cx="${x - 6}" cy="${BOTTOM}" rx="8" ry="4" fill="#8a877e"/>`).join('')
-      + (MODE === 'saguri' ? [PIER + 9, PIER + 51, PIER + 93, PIER + 135].map(x => `<rect x="${x - 15}" y="${BOTTOM - 40}" width="30" height="50" rx="8" fill="#7d7a70"/>`).join('') : '');
+      + (MODE === 'saguri' ? [PIER + 9, PIER + 51, PIER + 93, PIER + 135].map(x => `<rect x="${x - 15}" y="${BOTTOM - 40}" width="30" height="50" rx="8" fill="#7d7a70"/>`).join('')
+        + holes.map(hh => (hh.fish ? `<g class="hole-eye"><circle cx="${hh.x + 3}" cy="${BOTTOM - 4}" r="3" fill="#fff"/><circle cx="${hh.x + 3}" cy="${BOTTOM - 4}" r="1.6" fill="#222"/></g>` : '')).join('') : '')
+      + (MODE === 'sabiki' || MODE === 'lure' ? `<path d="M0 ${tana} H800" stroke="#ffd54a" stroke-width="1.5" stroke-dasharray="6 5" opacity=".8"/><text x="${PIER + 6}" y="${tana - 4}" class="svg-lbl tana-lbl">たな</text>` : '');
     schoolG.parentNode.insertBefore(bed, schoolG);
 
-    if (!isDrop) {
-      spotG.innerHTML = `
-        <g class="birds">
-          <path class="bird b1" d="M${spotX - 30} 150 q10 -10 20 0 q10 -10 20 0" stroke="#4a4f57" stroke-width="3" fill="none"/>
-          <path class="bird b2" d="M${spotX + 10} 128 q8 -8 16 0 q8 -8 16 0" stroke="#4a4f57" stroke-width="3" fill="none"/>
-        </g>`;
-    }
-    const bubbles = document.createElementNS(NS, 'g');
-    spotG.appendChild(bubbles);
+    // ちいさい さかな（ワイプよう、みぎむき）
+    const fishMini = k => {
+      const f = FISH_BY_ID[M.fish[0]] || FISH[0];
+      return `<g transform="scale(${(0.19 * k).toFixed(3)})"><svg x="-107" y="-68" width="214" height="136" viewBox="0 0 214 136">${Art.fish(f).replace(/^\s*<svg[^>]*>|<\/svg>\s*$/g, '')}</svg></g>`;
+    };
     const school = (MODE === 'saguri' ? [] : [0, 1, 2]).map(i => {
       const g = document.createElementNS(NS, 'g');
-      g.innerHTML = `<ellipse rx="${20 - i * 3}" ry="${8 - i}" fill="#0b2a44" opacity=".4"/><path d="M${-18 + i * 3} 0 l-12 -7 v14 z" fill="#0b2a44" opacity=".4"/>`;
+      g.innerHTML = fishMini(i === 0 ? 1 : 0.8);
       schoolG.appendChild(g);
       return { g, ph: Math.random() * 6, dy: (i - 1) * 10 };
     });
+    // さぐりづり: たべに でてくる さかな
+    const holeFish = document.createElementNS(NS, 'g');
+    if (MODE === 'saguri') { holeFish.innerHTML = fishMini(1); holeFish.setAttribute('opacity', '0'); schoolG.appendChild(holeFish); }
     const chumG = document.createElementNS(NS, 'g');
     schoolG.appendChild(chumG);
 
+    /* ── じょうたい ── */
     const s = {
-      phase: 'look', sub: '', t: 0, first: true,
-      bx: TIP.x, by: TIP.y, landX: 500, fu: 0, q: 0, taut: true,
-      dip: 0, dipCur: 0, bend: 0, bendCur: 0, shakeUntil: 0, hold: false,
-      bite: 'idle', round: 0, sinkT: 0, nice: false, biteX: null,
+      phase: 'tp', sub: '', t: 0, first: true,
+      bx: PIER, by: WATER, baitY: WATER, lat: 0, landD: 0.5, q: 0, taut: true, fallTo: tana,
+      dip: 0, dipCur: 0, bend: 0, bendCur: 0, shakeUntil: 0, hold: false, bailOpen: false,
+      bite: 'idle', round: 0, sinkT: 0, nice: false, eat: null, hookBtn: null,
       interest: 0, need: 3, idleT: 0, hinted: {},
-      count: 0, lastTwitch: -9, chum: 5, cloudT: -9, hole: 0, lastChon: -9, chons: 0, snagFails: 0,
+      lastTwitch: -9, chum: 5, hole: 0, lastChon: -9, chons: 0, snagFails: 0, restY: WATER,
       dist: 100, struggling: false, nextSwitch: 0, strugCount: 0, tension: 0, holding: false, breakT: 0, warnT: 0, baraDone: false,
-      catch: null, ui: null,
-      lat: 0, landD: 0.5, bailOpen: false, fingerOn: false, castStep: '', hookBtn: null, afterBail: null,
+      catch: null, ui: null, cam: { x: spotX, y: WATER - 20 }, fly: 0, swing: 0,
+      people: [], nextPerson: 1.0,
     };
 
     /* ── こうか ── */
-    const ripple = (x, y = WATER, big = false) => {
-      const e = document.createElementNS(NS, 'ellipse');
-      e.setAttribute('cx', x); e.setAttribute('cy', y + 2);
-      e.setAttribute('rx', big ? 26 : 16); e.setAttribute('ry', big ? 7 : 4);
-      e.setAttribute('class', 'ripple');
-      fx.appendChild(e);
-      setTimeout(() => e.remove(), 1200);
-    };
-    const splash = (x, y = WATER, n = 7) => {
-      for (let i = 0; i < n; i++) {
-        const c = document.createElementNS(NS, 'circle');
-        c.setAttribute('cx', x); c.setAttribute('cy', y);
-        c.setAttribute('r', 3 + Math.random() * 3);
-        c.setAttribute('class', 'drop');
-        c.style.setProperty('--dx', ((Math.random() - 0.5) * 80) + 'px');
-        c.style.setProperty('--dy', (-25 - Math.random() * 50) + 'px');
-        fx.appendChild(c);
-        setTimeout(() => c.remove(), 900);
-      }
-    };
-    const floatText = (text, x, y, cls = '') => {
+    const fpFx = fpSvg.querySelector('#fpFx'), tpFx = tpSvg.querySelector('#tpFx');
+    const addText = (layer, text, x, y, cls = '') => {
       const tx = document.createElementNS(NS, 'text');
       tx.setAttribute('x', x); tx.setAttribute('y', y);
       tx.setAttribute('text-anchor', 'middle');
       tx.setAttribute('class', 'float-text ' + cls);
       tx.textContent = text;
-      fx.appendChild(tx);
+      layer.appendChild(tx);
       setTimeout(() => tx.remove(), 1600);
     };
+    const fpText = (t, x, y, c) => addText(fpFx, t, x, y, c);
+    const wText = (t, x, y, c) => addText(wFx, t, x, y, (c || '') + ' wipe-text');
+    const ring = (layer, x, y, rx, ry) => {
+      const e = document.createElementNS(NS, 'ellipse');
+      e.setAttribute('cx', x); e.setAttribute('cy', y); e.setAttribute('rx', rx); e.setAttribute('ry', ry);
+      e.setAttribute('class', 'ripple');
+      layer.appendChild(e);
+      setTimeout(() => e.remove(), 1200);
+    };
+    const entry = () => FP.pos(toD(s.bx), s.lat);
+    const fpRipple = big => { const p = entry(); ring(fpFx, p.x, p.y, (big ? 40 : 22) * p.k + 4, (big ? 10 : 6) * p.k + 1.5); };
+    const fpSplash = n => {
+      const p = entry();
+      for (let i = 0; i < n; i++) {
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', (3 + Math.random() * 3) * (0.5 + p.k));
+        c.setAttribute('class', 'drop');
+        c.style.setProperty('--dx', ((Math.random() - 0.5) * 90 * p.k) + 'px');
+        c.style.setProperty('--dy', ((-25 - Math.random() * 50) * p.k) + 'px');
+        fpFx.appendChild(c);
+        setTimeout(() => c.remove(), 900);
+      }
+    };
     const chumBurst = (x, y) => {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 12; i++) {
         const c = document.createElementNS(NS, 'circle');
         c.setAttribute('cx', x); c.setAttribute('cy', y);
-        c.setAttribute('r', 2 + Math.random() * 2.5);
+        c.setAttribute('r', 1.5 + Math.random() * 2);
         c.setAttribute('class', 'chum');
-        c.style.setProperty('--dx', ((Math.random() - 0.5) * 70) + 'px');
-        c.style.setProperty('--dy', ((Math.random() - 0.3) * 40) + 'px');
+        c.style.setProperty('--dx', ((Math.random() - 0.5) * 60) + 'px');
+        c.style.setProperty('--dy', ((Math.random() - 0.3) * 36) + 'px');
         chumG.appendChild(c);
         setTimeout(() => c.remove(), 2600);
       }
     };
-    const cuePos = () => (useBobber ? { x: s.bx, y: WATER - 45 } : { x: TIP.x + 40, y: TIP.y - 25 });
     const hintOnce = (key, text, mood = 'think') => {
       if (s.hinted[key]) return;
       s.hinted[key] = true;
       App.say(text, mood);
+    };
+    const setSteps = (list, now) => {
+      stepsEl.innerHTML = list ? list.map((t, i) => `<span class="${i < now ? 'done' : i === now ? 'now' : ''}">${t}</span>`).join('') : '';
+    };
+    const view = v => {
+      tpLayer.classList.toggle('off', v !== 'tp');
+      fpLayer.classList.toggle('off', v !== 'fp');
+      wipe.hidden = v !== 'fp';
     };
 
     // おしている あいだ だけ うごく ボタン
@@ -268,359 +354,278 @@ Scenes.fishing = {
       return b;
     };
 
-    /* ── えがく ── */
-    const draw = () => {
-      let a = s.bendCur;
-      if (s.t < s.shakeUntil) a += Math.sin(s.t * 45) * 0.05;
-      TIP = rodPoint(a);
-      const c = rodPoint(a * 0.3, 0.55);
-      rod.setAttribute('d', `M${BASE.x} ${BASE.y} Q${c.x.toFixed(1)} ${c.y.toFixed(1)} ${TIP.x.toFixed(1)} ${TIP.y.toFixed(1)}`);
-
-      let endY;
-      if (useBobber) {
-        bob.setAttribute('transform', `translate(${s.bx.toFixed(1)},${s.by.toFixed(1)})`);
-        endY = s.by - 24;
-      } else {
-        weight.setAttribute('transform', `translate(${s.bx.toFixed(1)},${s.by.toFixed(1)})`);
-        endY = MODE === 'sabiki' ? s.by - 24 : s.by;
-      }
-      let sag = useBobber ? 45 : (s.taut ? 8 : 45);
-      if (s.phase === 'flying') sag = 0;
-      if (s.phase === 'reel') sag = s.tension > 60 ? -4 : 10;
-      const cx = (TIP.x + s.bx) / 2;
-      const cy = Math.max(TIP.y, Math.min(endY, WATER)) + sag;
-      line.setAttribute('d', s.phase === 'broken' ? '' : `M${TIP.x.toFixed(1)} ${TIP.y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${s.bx.toFixed(1)} ${endY.toFixed(1)}`);
-      line.classList.toggle('taut', s.phase === 'reel' && s.tension > 70);
-
-      // むれ
-      const hidden = s.phase === 'reel' || s.phase === 'landed';
-      school.forEach((f, i) => {
-        const cxs = MODE === 'sabiki' ? PIER + 90 : spotX;
-        let x = cxs + Math.sin(s.t * 0.6 + f.ph) * (MODE === 'sabiki' ? 50 : 70);
-        let y = tana + f.dy + Math.sin(s.t * 1.3 + f.ph) * 5;
-        const dir = Math.cos(s.t * 0.6 + f.ph) >= 0 ? 1 : -1;
-        if (i === 0 && s.biteX !== null) { x = s.biteX + 6; y = useBobber ? WATER + 40 : s.by; }
-        f.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${dir},1)`);
-        f.g.setAttribute('opacity', hidden ? '0' : '1');
+    // スワイプ（dy < 0 が うえ）
+    const onSwipe = (el, fn) => {
+      let g = null;
+      el.addEventListener('pointerdown', e => { g = { x: e.clientX, y: e.clientY, t: performance.now() }; try { el.setPointerCapture(e.pointerId); } catch (err) {} });
+      el.addEventListener('pointerup', e => {
+        if (!g) return;
+        const dx = e.clientX - g.x, dy = e.clientY - g.y, dt = Math.max(16, performance.now() - g.t);
+        g = null;
+        fn({ dx, dy, dt });
       });
-      if (!isDrop && Math.random() < 0.04) {
-        const b = document.createElementNS(NS, 'circle');
-        b.setAttribute('cx', spotX + (Math.random() - 0.5) * 60); b.setAttribute('cy', WATER + 2);
-        b.setAttribute('r', 2 + Math.random() * 3); b.setAttribute('class', 'bubble');
-        bubbles.appendChild(b);
-        setTimeout(() => b.remove(), 1500);
-      }
-
-      // ふかさ メーター（ルアー・サビキ）
-      if (!gauge.hidden) {
-        const range = BOTTOM - WATER;
-        gauge.querySelector('.dg-fish').style.top = ((tana - WATER) / range * 100) + '%';
-        const hook = gauge.querySelector('.dg-hook');
-        hook.style.top = (Math.max(0, Math.min(1, (s.by - WATER) / range)) * 100) + '%';
-        hook.textContent = `${depthM(s.by)}m`;
-      }
+      el.addEventListener('pointercancel', () => { g = null; });
     };
 
-    /* ═════ てもと してん ═════ */
-    const fpLayer = st.querySelector('.fp-layer');
-    const fpSvg = fpLayer.querySelector('svg');
-    const FE = id => fpSvg.querySelector('#' + id);
-    const fpLine = FE('fpLine'), fpRod = FE('fpRod'), fpRodTip = FE('fpRodTip'), fpRodLine = FE('fpRodLine');
-    const fpBail = FE('fpBail'), fpFinger = FE('fpFinger'), fpTarget = FE('fpTarget'), fpSpot = FE('fpSpot');
-    const fpSpots = FE('fpSpots'), fpFx = FE('fpFx');
-    const fpSteps = fpLayer.querySelector('.fp-steps');
-    const span = 760 - PIER;
-    const spotD = isDrop ? 0.06 : (spotX - PIER) / span;
-    const spotLat = isDrop ? 0 : (Math.random() - 0.5) * 1.1;
-    const toD = x => Math.max(0, Math.min(1, (x - PIER) / span));
-    const showFP = on => { fpLayer.classList.toggle('off', !on); st.classList.toggle('fp-on', on); };
+    /* ═════ リールの ベール（よこから みて スワイプ） ═════ */
+    let panelCb = null, panelDir = null;
+    const reelPanel = (dir, cb) => {
+      panelDir = dir;
+      panelCb = cb;
+      panel.hidden = false;
+      panel.classList.toggle('open', dir === 'up'); // up = いま ひらいているので もどす
+      panel.querySelector('.reel-arrow').className = 'reel-arrow ' + dir;
+      panel.querySelector('.reel-txt').textContent = dir === 'down' ? 'ベールを したに スワイプして おろそう' : 'ベールを うえに スワイプして もどそう';
+    };
+    onSwipe(panel, ({ dy }) => {
+      if (!panelDir) return;
+      const want = panelDir;
+      if ((want === 'down' && dy > 30) || (want === 'up' && dy < -30)) {
+        panel.classList.toggle('open', want === 'down');
+        s.bailOpen = want === 'down';
+        Sfx.click();
+        panelDir = null;
+        const cb = panelCb;
+        App.after(450, () => { panel.hidden = true; cb(); });
+      } else if (Math.abs(dy) > 30) {
+        Sfx.oops();
+        App.say(want === 'down' ? 'ぎゃくだよ! ベールは したに スワイプして おろすよ。' : 'ぎゃくだよ! ベールは うえに スワイプして もどすよ。', 'think');
+      }
+    });
 
-    // ポイント（とり・あわ）
+    /* ═════ なげる（さんにんしょう） ═════ */
+    const peopleG = tpSvg.querySelector('#tpPeople');
+    const tpRod = tpSvg.querySelector('#tpRod'), tpLine = tpSvg.querySelector('#tpLine'), tpFly = tpSvg.querySelector('#tpFly');
+    const PIV = { x: 446, y: 266 };
+    const tpTip = () => {
+      const a = s.swing * Math.PI / 180, dx = 590 - PIV.x, dy = 82 - PIV.y;
+      return { x: PIV.x + dx * Math.cos(a) - dy * Math.sin(a), y: PIV.y + dx * Math.sin(a) + dy * Math.cos(a) };
+    };
+    const danger = () => s.people.some(p => Math.abs(p.x - 400) < 150);
     if (!isDrop) {
-      const p = FP.pos(spotD, spotLat);
-      fpSpot.innerHTML = `
-        <g transform="translate(${p.x.toFixed(0)} ${(p.y - 70 * p.k - 30).toFixed(0)}) scale(${(0.6 + p.k).toFixed(2)})">
+      const p = TP.pos(spotD, spotLat);
+      tpSvg.querySelector('#tpSpot').innerHTML = `
+        <ellipse cx="${p.x.toFixed(0)}" cy="${p.y.toFixed(0)}" rx="${(30 * p.k + 12).toFixed(0)}" ry="${(6 * p.k + 3).toFixed(0)}" fill="#fff" opacity=".3"/>
+        <g transform="translate(${p.x.toFixed(0)} ${(p.y - 40).toFixed(0)})">
+          <path class="bird b1" d="M-24 0 q8 -8 16 0 q8 -8 16 0" stroke="#4a4f57" stroke-width="2.5" fill="none"/>
+          <path class="bird b2" d="M4 -14 q6 -6 12 0 q6 -6 12 0" stroke="#4a4f57" stroke-width="2.5" fill="none"/>
+        </g>`;
+      const fp = FP.pos(spotD, spotLat);
+      fpSvg.querySelector('#fpSpot').innerHTML = `
+        <g transform="translate(${fp.x.toFixed(0)} ${(fp.y - 70 * fp.k - 30).toFixed(0)}) scale(${(0.6 + fp.k).toFixed(2)})">
           <path class="bird b1" d="M-30 0 q10 -10 20 0 q10 -10 20 0" stroke="#4a4f57" stroke-width="3" fill="none"/>
           <path class="bird b2" d="M6 -18 q8 -8 16 0 q8 -8 16 0" stroke="#4a4f57" stroke-width="3" fill="none"/>
-        </g>
-        <g class="fp-bubbles"></g>`;
+        </g>`;
     }
-    const fpBubbles = fpSpot.querySelector('.fp-bubbles');
 
-    const fpText = (text, x, y, cls = '') => {
-      const tx = document.createElementNS(NS, 'text');
-      tx.setAttribute('x', x); tx.setAttribute('y', y);
-      tx.setAttribute('text-anchor', 'middle');
-      tx.setAttribute('class', 'float-text ' + cls);
-      tx.textContent = text;
-      fpFx.appendChild(tx);
-      setTimeout(() => tx.remove(), 1600);
-    };
-    const fpRipple = (p, big) => {
-      const e = document.createElementNS(NS, 'ellipse');
-      e.setAttribute('cx', p.x); e.setAttribute('cy', p.y);
-      e.setAttribute('rx', (big ? 40 : 22) * p.k + 4); e.setAttribute('ry', (big ? 10 : 6) * p.k + 1.5);
-      e.setAttribute('class', 'ripple');
-      fpFx.appendChild(e);
-      setTimeout(() => e.remove(), 1200);
-    };
-
-    const spotR = () => Math.max(30, Math.min(70, 28 / fpScale));
-    const setSteps = (list, now) => {
-      fpSteps.innerHTML = list.map((t, i) => `<span class="${i < now ? 'done' : i === now ? 'now' : ''}">${t}</span>`).join('');
-    };
-
-    const fpDraw = () => {
-      if (fpLayer.classList.contains('off')) return;
-      let b = s.bendCur;
-      if (s.t < s.shakeUntil) b += Math.sin(s.t * 45) * 0.05;
-      const tip = { x: 430 + b * 160, y: 110 + b * 330 };
-      fpRod.setAttribute('d', `M705 460 Q${(620 + b * 40).toFixed(1)} ${(330 + b * 60).toFixed(1)} ${((705 + tip.x) / 2 + 10).toFixed(1)} ${((460 + tip.y) / 2 - 20 + b * 80).toFixed(1)}`);
-      fpRodTip.setAttribute('d', `M${((705 + tip.x) / 2 + 10).toFixed(1)} ${((460 + tip.y) / 2 - 20 + b * 80).toFixed(1)} Q${((tip.x + 560) / 2).toFixed(1)} ${(tip.y + 70 + b * 40).toFixed(1)} ${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`);
-      fpRodLine.setAttribute('d', `M604 388 L${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`);
-      const open = s.bailOpen || (isDrop && s.phase === 'mode' && s.sub === 'fall');
-      fpBail.setAttribute('d', open ? 'M-50 -6 Q-30 44 -4 26' : 'M-50 -6 Q-36 -46 -4 -30');
-      fpFinger.style.opacity = s.fingerOn ? '1' : '0';
-
-      // しかけの いち
-      let p, dangle = false;
-      if (s.phase === 'look' || s.phase === 'aim') {
-        p = { x: tip.x, y: tip.y + 46, k: 0.5 };
-        dangle = true;
-      } else if (s.phase === 'flying') {
-        const u = s.fu;
-        const q = FP.pos(s.landD * u, s.lat * u);
-        const h = isDrop ? 0 : Math.sin(Math.PI * u) * 170 * (1 - 0.4 * u);
-        p = { x: tip.x + (q.x - tip.x) * Math.min(1, u * 1.3), y: q.y - h - (1 - u) * (q.y - tip.y) * 0.3, k: q.k };
-        dangle = true;
-      } else {
-        p = FP.pos(toD(s.bx), s.lat);
+    const updatePeople = dt => {
+      s.nextPerson -= dt;
+      if (s.nextPerson <= 0 && s.people.length < 1) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        s.people.push({ x: dir > 0 ? -220 : 1020, dir, v: Math.floor(Math.random() * 2), walk: 0, stop: 0, speed: 110 + Math.random() * 40 });
+        s.nextPerson = 5 + Math.random() * 5;
       }
-      // ウキ・しかけ
-      if (dangle) {
-        fpTarget.innerHTML = useBobber
-          ? `<g transform="translate(${p.x.toFixed(1)} ${p.y.toFixed(1)}) scale(${(p.k * 1.4).toFixed(2)})"><rect x="-2" y="-24" width="4" height="13" fill="#e53935"/><path d="M-10 0 A10 10 0 0 1 10 0 Z" fill="#e53935"/><path d="M-10 0 A10 10 0 0 0 10 0 Z" fill="#fff"/></g>`
-          : `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(6 * p.k + 2).toFixed(1)}" fill="${MODE === 'sabiki' ? '#ff9f43' : MODE === 'saguri' ? '#e53935' : MODE === 'lure' ? '#bcd6ee' : '#6b6f76'}"/>`;
-      } else if (useBobber) {
-        const sunk = s.dipCur > 20;
-        const yy = p.y + s.dipCur * p.k * 0.9 + Math.sin(s.t * 2.2) * 1.5 * p.k;
-        fpTarget.innerHTML = `<g transform="translate(${p.x.toFixed(1)} ${yy.toFixed(1)}) scale(${(p.k * 1.4).toFixed(2)})" opacity="${sunk ? 0.35 : 1}">
-            <rect x="-2" y="-24" width="4" height="13" fill="#e53935"/><path d="M-10 0 A10 10 0 0 1 10 0 Z" fill="#e53935"/><path d="M-10 0 A10 10 0 0 0 10 0 Z" fill="#fff" opacity=".5"/></g>
-          <ellipse cx="${p.x.toFixed(1)}" cy="${(p.y + 2).toFixed(1)}" rx="${(16 * p.k + 3).toFixed(1)}" ry="${(4 * p.k + 1).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.5"/>`;
-      } else {
-        fpTarget.innerHTML = `<ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${(14 * p.k + 3).toFixed(1)}" ry="${(3.5 * p.k + 1).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.5"/>`;
+      s.people.forEach(p => {
+        if (p.stop > 0) p.stop -= dt;
+        else { p.x += p.dir * p.speed * dt; p.walk += dt * 9; }
+      });
+      s.people = s.people.filter(p => p.x > -300 && p.x < 1100);
+      // びっくりさせた ひとが とおりすぎたら、もういちど なげるように いう
+      if (s.waitClear && !danger() && s.phase === 'tp-cast') {
+        s.waitClear = false;
+        App.say('ひとが とおりすぎたね! いまなら なげられるよ。\nうしろを みて、うえに シュッと スワイプ!', 'wow');
       }
-      const endY = useBobber && !dangle ? p.y - 24 * p.k * 1.4 + s.dipCur * p.k * 0.9 : p.y;
-      const sag = s.phase === 'flying' ? 10 : (s.taut || useBobber ? 18 : 60);
-      fpLine.setAttribute('d', `M${tip.x.toFixed(1)} ${tip.y.toFixed(1)} Q${((tip.x + p.x) / 2).toFixed(1)} ${(Math.max(tip.y, endY) + sag).toFixed(1)} ${p.x.toFixed(1)} ${endY.toFixed(1)}`);
-
-      if (fpBubbles && Math.random() < 0.05) {
-        const q = FP.pos(spotD + (Math.random() - 0.5) * 0.08, spotLat + (Math.random() - 0.5) * 0.25);
-        const c = document.createElementNS(NS, 'circle');
-        c.setAttribute('cx', q.x); c.setAttribute('cy', q.y); c.setAttribute('r', 2 + 3 * q.k);
-        c.setAttribute('class', 'bubble');
-        fpBubbles.appendChild(c);
-        setTimeout(() => c.remove(), 1500);
-      }
+      peopleG.innerHTML = s.people.map(p => `<g transform="translate(${p.x.toFixed(1)} 446) scale(${p.dir} 1)">${TP.person(p.v, p.walk, p.stop > 0)}</g>`
+        + (p.stop > 0 ? `<text x="${p.x.toFixed(1)}" y="250" text-anchor="middle" class="tp-surprise">わっ!</text>` : '')).join('');
     };
 
-    /* ── なげる じゅんび: ベール → ゆび → スワイプ ── */
-    let gesture = null;
-    const castSteps = () => (isDrop ? ['① ベールを おろす', '② ゆびに いとを かける', '③ ゆびを はなす'] : ['① ベールを おろす', '② ゆびに いとを かける', '③ うえに シュッ!']);
-    const readyPhase = () => {
-      s.phase = 'aim';
-      App.setStep(2);
-      showFP(true);
+    const tpPhase = () => {
+      s.phase = 'tp-bail';
+      s.round++;
+      s.sub = '';
+      s.bend = 0;
+      s.eat = null;
+      s.swing = 0;
       s.bailOpen = false;
-      s.fingerOn = false;
-      s.castStep = 'bail';
+      s.taut = true;
+      s.dip = 0;
+      hookedG.setAttribute('opacity', '0');
+      weight.setAttribute('opacity', '1');
+      if (useBobber) wBob.style.display = '';
+      App.setStep(2);
+      view('tp');
       App.setControls();
-      setSteps(castSteps(), 0);
-      fpSpots.innerHTML = '';
-      App.say(isDrop
-        ? (MODE === 'sabiki'
-          ? (s.first ? 'サビキづりは あしもとに カゴを おとすよ。\nまずは リールの ベール（はりがね）を おろそう。ひかっている ところを タッチ!' : 'エサを つめた カゴを、また おとそう! ベールを おろしてね。')
-          : 'さぐりづりは、あしもとの ブロックの すきま（あな）に おとすよ。\nまずは リールの ベール（はりがね）を おろそう!')
-        : (s.first ? 'とりが とんでいて、あわが でている ところに さかなが いるよ!\nまずは リールの ベール（はりがね）を おろそう。ひかっている ところを タッチ!' : 'もういちど ポイントを ねらって なげよう! ベールを おろしてね。'), 'wow');
-      tapSpot(fpSpots, 600, 372, spotR(), () => {
-        if (s.castStep !== 'bail') return;
-        s.bailOpen = true;
-        s.castStep = 'finger';
-        Sfx.click();
-        setSteps(castSteps(), 1);
-        fpSpots.innerHTML = '';
+      const steps = isDrop ? ['① ベールを おろす', '② したに スワイプで おとす'] : ['① ベールを おろす', '② うしろを みて なげる'];
+      setSteps(steps, 0);
+      App.say(s.first
+        ? 'まずは リールの ベール（はりがね）を おろそう。\nリールの えを したに スワイプしてね。'
+        : 'もういちど なげよう! まずは ベールを おろしてね。', 'wow');
+      reelPanel('down', () => {
+        s.phase = 'tp-cast';
+        setSteps(steps, 1);
         App.say(isDrop
-          ? 'ベールを おろしたら、いとが でないように ひとさしゆびに ひっかけよう。\nゆびの マークを おして… はなすと しかけが おちるよ!'
-          : 'ベールを おろしたら、いとを ひとさしゆびに ひっかけるよ。\nゆびの マークを おしたまま、うえに シュッと スワイプして はなそう!');
-        const spot = tapSpot(fpSpots, 600, 396, spotR(), () => {});
-        spot.classList.add('finger-spot');
-        spot.addEventListener('pointerdown', e => {
-          if (s.castStep !== 'finger') return;
-          s.fingerOn = true;
-          s.castStep = 'swipe';
-          setSteps(castSteps(), 2);
-          gesture = { x: e.clientX, y: e.clientY, t: performance.now() };
-          try { fpSvg.setPointerCapture(e.pointerId); } catch (err) {}
-          Sfx.pop();
-        });
+          ? (MODE === 'sabiki' ? 'ベールを おろしたよ。がめんを したに スワイプして、あしもとに カゴを おとそう!' : 'ベールを おろしたよ。がめんを したに スワイプして、ブロックの あなに おとそう!')
+          : 'つぎは なげるよ! うしろを ひとが とおっていないか よく みてね。\nとりの いる ポイントへ むけて、がめんを うえに シュッと スワイプ!', 'wow');
       });
     };
 
-    fpSvg.addEventListener('pointerdown', e => {
-      // アワセ: うえに シュッ
-      if (s.phase === 'bite' || (useBobber && s.phase === 'mode')) gesture = { x: e.clientX, y: e.clientY, t: performance.now(), hook: true };
-    });
-    fpSvg.addEventListener('pointerup', e => {
-      if (!gesture) return;
-      const g = gesture;
-      gesture = null;
-      const up = g.y - e.clientY, dx = e.clientX - g.x;
-      const dt = Math.max(16, performance.now() - g.t);
-      if (g.hook) {
-        if (up > 40 && s.hookBtn) { fpText('くいっ!', 430, 90, 'small'); onHook(s.hookBtn); }
-        return;
-      }
-      if (s.castStep !== 'swipe') return;
-      s.fingerOn = false;
+    onSwipe(tpLayer, ({ dx, dy, dt }) => {
+      if (s.phase !== 'tp-cast') return;
       if (isDrop) {
-        s.castStep = '';
-        s.bailOpen = false; // おちたら ベールは たな/そこで もどす
+        if (dy < 30) { App.say('したに スワイプして そっと おとそう。', 'think'); return; }
         s.lat = 0;
-        s.landD = toD(MODE === 'saguri' ? holes[s.hole].x : PIER + 60);
-        fpSteps.innerHTML = '';
-        fpSpots.innerHTML = '';
-        cast(MODE === 'saguri' ? holes[s.hole].x : PIER + 60);
+        s.bx = MODE === 'saguri' ? holes[s.hole].x : PIER + 55;
+        s.landD = toD(s.bx);
+        s.q = 1;
+        s.phase = 'tp-fly';
+        s.fly = 0;
+        setSteps(null);
+        Sfx.pop();
         return;
       }
-      if (up < 50) {
-        s.castStep = 'finger';
-        setSteps(castSteps(), 1);
+      const up = -dy;
+      if (up < 50) { App.say('うえに シュッと スワイプして なげよう!', 'think'); return; }
+      // うしろに ひとが いたら びっくり!
+      if (danger()) {
+        s.people.forEach(p => { if (Math.abs(p.x - 400) < 150) p.stop = 1.4; });
+        s.waitClear = true;
+        s.swing = -25;
+        App.after(300, () => { s.swing = 0; });
         Sfx.oops();
-        App.say('ゆびを はなすのが はやいよ!\nゆびの マークを おしたまま、うえに シュッと スワイプしてね。', 'think');
+        App.say('わっ! うしろに ひとが いたよ! びっくりさせちゃったね。\nはりが ささると たいへん。ひとが とおりすぎてから なげよう。', 'think');
         return;
       }
       const H = st.clientHeight || 400, W = st.clientWidth || 800;
       const power = Math.max(0.05, Math.min(1, 0.6 * up / (H * 0.6) + 0.4 * (up / dt) / 2.2));
       s.lat = Math.max(-1, Math.min(1, dx / (W * 0.3)));
       s.landD = 0.12 + 0.86 * power;
-      s.castStep = 'fly';
-      fpSteps.innerHTML = '';
-      fpSpots.innerHTML = '';
-      cast(PIER + s.landD * span);
+      s.bx = PIER + s.landD * SPAN;
+      s.q = Math.max(0, Math.min(1, 1 - Math.hypot((s.landD - spotD) * 2.5, (s.lat - spotLat) * 1.4)));
+      s.phase = 'tp-fly';
+      s.fly = 0;
+      setSteps(null);
+      Sfx.whoosh();
     });
 
-    /* ── うしろを みる ── */
-    const look = () => {
-      s.phase = 'look';
-      App.setStep(2);
-      showFP(true);
-      if (isDrop) { readyPhase(); return; }
-      App.say('さおを なげる まえに…\nうしろに ひとが いないか みよう!');
-      App.setControls(App.btn('👀 うしろを みる', {
-        cls: 'big pulse',
-        onClick: b => {
-          b.disabled = true;
-          fpLayer.classList.add('look-back');
-          App.after(1500, () => { fpLayer.classList.remove('look-back'); readyPhase(); });
-        },
-      }));
-    };
-
-    // もういちど なげる（おとす）
-    const recast = msg => {
-      s.round++;
-      s.phase = 'look';
-      s.sub = '';
-      s.taut = true;
-      s.bend = 0;
-      s.biteX = null;
-      shadow.setAttribute('opacity', '0');
-      gauge.hidden = true;
-      showFP(true);
-      if (msg) App.say(msg);
-      App.after(msg ? 1600 : 0, readyPhase);
-    };
-
-    const cast = x => {
-      s.phase = 'flying';
-      s.fu = 0;
-      s.startX = TIP.x;
-      s.startY = TIP.y;
-      s.landX = x;
-      s.q = isDrop ? 1 : Math.max(0, Math.min(1, 1 - Math.hypot((s.landD - spotD) * 2.5, (s.lat - spotLat) * 1.4)));
-      if (!isDrop) {
-        rod.classList.remove('swing');
-        void rod.getBoundingClientRect();
-        rod.classList.add('swing');
-        Sfx.whoosh();
+    const drawTP = dt => {
+      updatePeople(dt);
+      if (s.phase === 'tp-fly') {
+        s.fly = Math.min(1, s.fly + dt / (isDrop ? 0.5 : 1.0));
+        if (!isDrop) s.swing = s.fly < 0.25 ? -70 * (s.fly / 0.25) : -70 + 85 * Math.min(1, (s.fly - 0.25) / 0.2);
+        if (s.fly >= 1) { s.phase = 'tp-landed'; landed(); }
       }
+      tpRod.setAttribute('transform', `rotate(${s.swing.toFixed(1)} ${PIV.x} ${PIV.y})`);
+      const tip = tpTip();
+      let p;
+      if ((s.phase === 'tp-fly' && s.fly > 0.35) || s.phase === 'tp-landed') {
+        const u = s.phase === 'tp-landed' ? 1 : (s.fly - 0.35) / 0.65;
+        const end = isDrop ? { x: 520, y: 336 } : TP.pos(s.landD * u, s.lat * u);
+        p = { x: tip.x + (end.x - tip.x) * u, y: tip.y + (end.y - tip.y) * u - Math.sin(Math.PI * u) * (isDrop ? 0 : 140) };
+      } else {
+        p = { x: tip.x, y: tip.y + 40 };
+      }
+      tpFly.innerHTML = `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="${useBobber ? '#e53935' : '#6b6f76'}"/>`;
+      tpLine.setAttribute('d', `M${tip.x.toFixed(1)} ${tip.y.toFixed(1)} Q${((tip.x + p.x) / 2).toFixed(1)} ${(Math.max(tip.y, p.y) + 10).toFixed(1)} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`);
     };
 
+    /* ═════ しずむ（てもと＋ワイプ） ═════ */
     const landed = () => {
-      s.bx = s.landX;
-      s.by = WATER;
       Sfx.splash();
-      ripple(s.bx, WATER, true);
-      splash(s.bx);
-      const fp = FP.pos(s.landD, s.lat);
-      fpRipple(fp, true);
+      const tp = isDrop ? { x: 520, y: 336 } : TP.pos(s.landD, s.lat);
+      ring(tpFx, tp.x, tp.y, 30, 7);
       let msg = '';
       if (!isDrop) {
-        if (s.q > 0.75) { msg = 'どんぴしゃ! '; fpText('どんぴしゃ!', fp.x, fp.y - 40, 'big'); Sfx.good(); }
+        if (s.q > 0.75) { msg = 'どんぴしゃ! ポイントに はいったよ!'; Sfx.good(); addText(tpFx, 'どんぴしゃ!', tp.x, tp.y - 40, 'big'); }
         else if (s.q > 0.35) msg = 'おしい! ポイントの ちかくだよ。';
         else msg = 'ポイントから すこし はなれちゃった。';
       }
-      const start = { uki: startUki, choinage: startChoi, lure: startLure, sabiki: startSabiki, saguri: startSaguri }[MODE];
       s.first = false;
-      if (isDrop) { start(msg); return; }
-      // なげたら ベールを もどして いとを とめる
-      s.phase = 'mode';
-      s.sub = 'bail';
-      App.say(msg + '\nちゃくすい! ベールを もどして、いとが でないように しよう。ひかっている ところを タッチ!', 'wow');
-      tapSpot(fpSpots, 600, 372, spotR(), () => {
-        s.bailOpen = false;
-        fpSpots.innerHTML = '';
-        Sfx.click();
-        s.sub = '';
-        start(msg);
-      });
+      App.after(isDrop ? 300 : 800, () => startFall(msg));
     };
 
-    /* ── アタリ（どの つりかたも おなじ） ── */
+    const fallTarget = () => (MODE === 'saguri' ? BOTTOM - 14 : MODE === 'choinage' ? BOTTOM : tana);
+    const startFall = msg => {
+      s.phase = 'fall';
+      s.by = WATER;
+      s.baitY = WATER;
+      s.taut = false;
+      s.bailOpen = true;
+      s.fallTo = fallTarget();
+      s.cam = { x: Math.max(PIER + 120, Math.min(FAR - 110, s.bx)), y: WATER - 30 };
+      view('fp');
+      setSteps(null);
+      App.setStep(3);
+      App.setControls();
+      fpRipple(true);
+      fpSplash(6);
+      App.say((msg ? msg + '\n' : '') + (MODE === 'choinage' || MODE === 'saguri'
+        ? 'しかけが そこまで しずんでいくよ。ワイプで うみの なかを みてね。'
+        : `しかけが ねらいの たな（${depthM(tana)}m）まで しずんでいくよ。ワイプで みてね。`), 'wow');
+    };
+
+    const updateFall = dt => {
+      const y = useBobber ? s.baitY : s.by;
+      const ny = Math.min(s.fallTo, y + 45 * dt);
+      if (useBobber) { s.baitY = ny; s.by = WATER; } else s.by = ny;
+      if (ny >= s.fallTo) {
+        s.phase = 'bail-close';
+        wText('とうちゃく!', s.bx, ny - 16, 'small');
+        App.say(MODE === 'choinage' || MODE === 'saguri'
+          ? 'そこに ついたよ! ベールを もどして いとを とめよう。\nリールの えを うえに スワイプ!'
+          : 'たなに ついたよ! ベールを もどして いとを とめよう。\nリールの えを うえに スワイプ!', 'wow');
+        reelPanel('up', () => { s.taut = true; startMode(); });
+      }
+    };
+
+    const startMode = () => {
+      s.phase = 'mode';
+      App.setStep(3);
+      ({ uki: startUki, choinage: choiDrag, lure: lureRetrieve, sabiki: sabikiShakeMode, saguri: saguriSearch }[MODE])(true);
+    };
+
+    // もういちど なげる
+    const recast = msg => {
+      s.round++;
+      s.phase = 'wait-recast';
+      s.eat = null;
+      if (msg) App.say(msg);
+      App.setControls();
+      App.after(msg ? 1800 : 0, tpPhase);
+    };
+
+    /* ═════ アタリ（ワイプで たべる ようすが みえる） ═════ */
+    const baitPos = () => ({ x: s.bx, y: useBobber ? s.baitY : s.by });
     const biteSeq = onMiss => {
       s.phase = 'bite';
       s.bite = 'idle';
       s.hold = false;
-      App.setStep(3);
       const r = ++s.round;
       const hookBtn = App.btn('✊ あわせる! <small>うえに シュッ</small>', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
       s.hookBtn = hookBtn;
       App.setControls(hookBtn);
-      s.biteX = s.bx;
-      let tt = 300 + Math.random() * 500;
+      s.eat = { mode: 'approach', t0: s.t };
+      let tt = 900 + Math.random() * 500;
       const n = 1 + Math.floor(Math.random() * 2);
       for (let i = 0; i < n; i++) {
         App.after(tt, () => { if (s.round === r) nibble(); });
-        tt += 800 + Math.random() * 700;
+        tt += 900 + Math.random() * 700;
       }
       App.after(tt, () => { if (s.round === r) sink(r, hookBtn, onMiss); });
     };
 
     const nibble = () => {
       s.bite = 'nibble';
+      s.eat = { mode: 'peck', t0: s.t };
       Sfx.nibble();
-      const c = cuePos();
-      const fp = FP.pos(toD(s.bx), s.lat);
+      const b = baitPos();
+      wText('つんつん', b.x, b.y - 18, 'small');
       if (useBobber) {
         s.dip = 9;
-        ripple(s.bx);
-        fpRipple(fp);
+        fpRipple();
         App.after(200, () => { if (s.bite === 'nibble') s.dip = 0; });
-        floatText('ちょん', c.x + 30, c.y, 'small');
-        fpText('ちょん', fp.x + 40, fp.y - 30, 'small');
+        fpText('ちょん', entry().x + 40, entry().y - 30, 'small');
       } else {
         s.shakeUntil = s.t + 0.45;
-        floatText('ぷるぷる', c.x, c.y, 'small');
         fpText('ぷるぷる', 470, 80, 'small');
       }
     };
@@ -628,53 +633,57 @@ Scenes.fishing = {
     const sink = (r, hookBtn, onMiss) => {
       s.bite = 'sink';
       s.sinkT = s.t;
+      s.eat = { mode: 'bite', t0: s.t };
       Sfx.sink();
-      const c = cuePos();
-      const fp = FP.pos(toD(s.bx), s.lat);
+      const b = baitPos();
+      wText('ぱくっ!', b.x, b.y - 20, 'big');
       if (useBobber) {
         s.dip = 30;
-        ripple(s.bx, WATER, true);
-        fpRipple(fp, true);
-        floatText('ぐぐーっ!', c.x, c.y - 5, 'big');
-        fpText('ぐぐーっ!', fp.x, fp.y - 50, 'big');
+        fpRipple(true);
+        fpText('ぐぐーっ!', entry().x, entry().y - 50, 'big');
       } else {
         s.bend = 0.32;
-        floatText('ぐいーっ!', c.x + 20, c.y, 'big');
         fpText('ぐいーっ!', 520, 120, 'big');
       }
       hookBtn.classList.add('now');
       hookBtn.innerHTML = '✊ いまだ! あわせる! <small>うえに シュッ</small>';
-      fpLayer.querySelector('.fp-flash').classList.add('on');
-      App.after(500, () => fpLayer.querySelector('.fp-flash').classList.remove('on'));
-      // あわせる じかんは みじかめ（#9）
+      const fl = fpLayer.querySelector('.fp-flash');
+      fl.classList.add('on');
+      App.after(500, () => fl.classList.remove('on'));
       App.after(2200, () => {
         if (s.round !== r || s.phase !== 'bite') return;
         s.bite = 'gone';
         s.dip = 0;
         s.bend = 0;
-        s.biteX = null;
+        s.eat = { mode: 'leave', t0: s.t };
         hookBtn.classList.remove('now');
         hookBtn.disabled = true;
         Sfx.oops();
-        App.say(`あ〜、にげちゃった。\nアタリが きたら すぐ あわせよう!`, 'think');
-        App.after(1600, () => { if (s.round === r) onMiss(); });
+        App.say('あ〜、エサだけ とられちゃった。\nぱくっと たべたら すぐ あわせよう!', 'think');
+        App.after(1600, () => { if (s.round === r) { s.eat = null; onMiss(); } });
       });
     };
 
     const onHook = hookBtn => {
+      if (!hookBtn) return;
       if (s.bite === 'sink' && s.phase === 'bite') {
         hookBtn.disabled = true;
         hooked();
       } else if (s.bite === 'nibble') {
         Sfx.oops();
-        App.say(useBobber
-          ? 'いまは「ちょんちょん」。さかなが えさを つついているだけだよ。\nぐーっと しずむまで まってね!'
-          : 'いまは「ぷるぷる」。さかなが えさを つついているだけだよ。\nさおさきが ぐいーっと まがるまで まってね!', 'think');
-      } else if (s.bite === 'idle') {
+        App.say('いまは「つんつん」。さかなが エサを つついているだけだよ。\nワイプで ぱくっと たべるまで まってね!', 'think');
+      } else if (s.bite === 'idle' && (s.phase === 'mode' || s.phase === 'bite')) {
         Sfx.oops();
-        App.say(`まだ さかなは きていないよ。\n${useBobber ? 'ウキ' : 'さおの さき'}を じーっと みていようね。`, 'think');
+        App.say('まだ さかなは たべていないよ。\nワイプで さかなの ようすを みていようね。', 'think');
       }
     };
+    // てもと がめんを うえに スワイプで アワセ
+    onSwipe(fpLayer, ({ dy }) => {
+      if (dy < -40 && (s.phase === 'bite' || (useBobber && s.phase === 'mode'))) {
+        fpText('くいっ!', 430, 90, 'small');
+        onHook(s.hookBtn);
+      }
+    });
 
     /* ── ねがかり・いとが きれる・バレる ── */
     const snag = resume => {
@@ -683,8 +692,8 @@ Scenes.fishing = {
       s.bend = 0.28;
       s.hold = false;
       Sfx.strain();
-      floatText('ねがかり!', s.bx, s.by - 30, 'big');
       fpText('ねがかり!', 430, 160, 'big');
+      wText('ひっかかった!', s.bx, s.by - 16, 'small');
       App.say('ねがかり! そこの いわに ひっかかっちゃった。\nむりに ひっぱらず、さおを あおって はずそう!', 'think');
       App.setControls(App.btn('💪 さおを あおる', {
         cls: 'big',
@@ -714,12 +723,10 @@ Scenes.fishing = {
       s.hold = false;
       Sfx.strain();
       Sfx.oops();
-      floatText('ぷつん!', TIP.x + 60, TIP.y, 'big');
       fpText('ぷつん!', 430, 140, 'big');
-      shadow.setAttribute('opacity', '0');
+      hookedG.setAttribute('opacity', '0');
       weight.setAttribute('opacity', '0');
-      bob.style.display = 'none';
-      gauge.hidden = true;
+      wBob.style.display = 'none';
       App.say(why === 'fight'
         ? 'ぷつん! いとが きれちゃった…\nいとが あかい ときに まきつづけると きれるよ。あばれたら てを はなそうね。'
         : 'ぷつん! しかけが とれなくて、いとが きれちゃった…\nしかけを むすびなおそう。', 'think');
@@ -731,100 +738,59 @@ Scenes.fishing = {
       s.phase = 'bara';
       s.hold = false;
       Sfx.oops();
-      shadow.setAttribute('opacity', '0');
-      floatText('バレた…', s.bx, WATER - 60, 'big');
-      splash(s.bx, WATER);
+      hookedG.setAttribute('opacity', '0');
+      fpText('バレた…', 430, 140, 'big');
+      fpSplash(8);
       App.setControls();
       App.say('あっ! はりが はずれて にげちゃった（バレた）…\nすぐに あわせると がっちり かかって バレにくいよ。', 'think');
       App.after(2600, () => recast());
     };
 
-    /* ═════ つりかたごとの あそびかた ═════ */
+    /* ═════ つりかたごとの さそいかた ═════ */
 
-    /* ウキづり */
-    const startUki = msg => {
+    const startUki = first => {
       s.phase = 'mode';
-      App.setStep(3);
-      s.biteX = null;
       const r = ++s.round;
       const hookBtn = App.btn('✊ あわせる! <small>うえに シュッ</small>', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
       s.hookBtn = hookBtn;
       App.setControls(hookBtn);
-      if (msg !== undefined) App.say(msg + '\nウキが ぐーっと しずんだら すぐ「あわせる!」', 'wow');
-      const wait = ((msg !== undefined ? 4500 : 2500) + Math.random() * 2000) * (1.4 - 0.8 * s.q);
-      App.after(wait, () => { if (s.round === r) biteSeq(() => startUki()); });
+      if (first) App.say('ウキが たったよ! ワイプで エサを みていてね。\nさかなが ぱくっと たべて、ウキが しずんだら すぐ あわせる!', 'wow');
+      const wait = ((first ? 3500 : 2200) + Math.random() * 2000) * (1.4 - 0.8 * s.q);
+      App.after(wait, () => { if (s.round === r) biteSeq(() => startUki(false)); });
     };
 
-    /* ちょいなげ */
-    const startChoi = msg => {
-      s.phase = 'mode';
-      s.sub = 'sink';
-      s.taut = false;
-      App.setStep(3);
-      App.setControls();
-      App.say((msg || '') + '\nおもりが しずんでいくよ… そこに つくまで まってね。', 'wow');
-    };
-    const choiDrag = () => {
+    const choiDrag = first => {
       s.phase = 'mode';
       s.sub = 'drag';
       s.interest = 0;
       s.need = (2.2 + Math.random() * 2.5) * (1.4 - 0.6 * s.q);
+      if (first === true) App.say('ボタンを おしている あいだ、ゆっくり ひいて（サビいて）すなの そこを さぐろう。\nいわに ひっかけないように ワイプを みてね!', 'wow');
       App.setControls(holdCtl('🐢 ゆっくり ひく（サビく）'));
     };
     const updateChoi = dt => {
-      if (s.sub === 'sink') {
-        s.by = Math.min(BOTTOM, s.by + 90 * dt);
-        if (s.by >= BOTTOM) {
-          s.sub = 'slack';
-          floatText('とん', s.bx, BOTTOM - 25, 'small');
-          App.say('そこに ついたよ! いとが たるんでいるね。\nすこし まいて、いとを ピンと はろう。');
-          App.setControls(App.btn('🔄 いとふけを とる', {
-            cls: 'big pulse',
-            onClick: () => {
-              s.taut = true;
-              Sfx.reel();
-              App.say('いとが ピンと はったね。\nボタンを おしている あいだ、ゆっくり ひいて すなの そこを さぐろう。ときどき とまって まつのも だいじ!', 'wow');
-              choiDrag();
-            },
-          }));
+      if (s.hold) {
+        s.bx -= 16 * dt;
+        s.interest += dt;
+        s.idleT = 0;
+        s.bend = 0.05;
+        if (rocks.some(x => Math.abs(s.bx - x) < 16)) {
+          snag(() => { s.bx -= 34; App.say('ゆっくり ひいて さそおう。'); choiDrag(); });
+          return;
         }
-      } else if (s.sub === 'drag') {
-        if (s.hold) {
-          s.bx -= 16 * dt;
-          s.interest += dt;
-          s.idleT = 0;
-          s.bend = 0.05;
-          if (rocks.some(x => Math.abs(s.bx - x) < 16)) {
-            snag(() => { s.bx -= 34; App.say('ゆっくり ひいて さそおう。'); choiDrag(); });
-            return;
-          }
-        } else {
-          s.interest += 0.3 * dt;
-          s.idleT += dt;
-          s.bend = 0;
-          if (s.idleT > 6) hintOnce('choiIdle', 'ときどき ゆっくり ひいて、さかなを さそおう!');
-        }
-        if (s.interest >= s.need) { biteSeq(() => { App.say('また ゆっくり ひいて さそおう。'); choiDrag(); }); return; }
-        if (s.bx <= PIER + 70) recast('しかけが てまえまで もどってきたよ。もういちど なげよう!');
+      } else {
+        s.interest += 0.3 * dt;
+        s.idleT += dt;
+        s.bend = 0;
+        if (s.idleT > 6) hintOnce('choiIdle', 'ときどき ゆっくり ひいて、さかなを さそおう!');
       }
+      if (s.interest >= s.need) { biteSeq(() => { App.say('また ゆっくり ひいて さそおう。'); choiDrag(); }); return; }
+      if (s.bx <= PIER + 70) recast('しかけが てまえまで もどってきたよ。もういちど なげよう!');
     };
 
-    /* ルアー */
-    const startLure = msg => {
+    const lureRetrieve = first => {
       s.phase = 'mode';
-      s.sub = 'fall';
-      s.count = 0;
-      s.hinted.lureNear = false;
-      App.setStep(3);
-      gauge.hidden = false;
-      App.say((msg || '') + `\nルアーが しずんでいくよ。いっしょに かぞえよう!\nさかなは ${depthM(tana)}mくらいの ふかさに いるよ。そこまで しずんだら「まきはじめる」!`, 'wow');
-      App.setControls(App.btn('🔄 まきはじめる', { cls: 'big pulse', onClick: () => lureRetrieve() }));
-    };
-    const lureRetrieve = () => {
-      if (s.phase !== 'mode') return;
       s.sub = 'retrieve';
-      s.taut = true;
-      App.say('ボタンを おしている あいだ まくよ。「しゃくる」で ルアーを ピョンと うごかして さそおう!');
+      if (first === true) App.say('ルアーが むれの たなに ついたよ!\nおしている あいだ まく・はなすと しずむ。「しゃくる」で ピョンと うごかして さそおう!', 'wow');
       App.setControls(holdCtl('🔄 まく'), App.btn('⤴️ しゃくる', {
         cls: 'big blue',
         onClick: () => {
@@ -833,72 +799,43 @@ Scenes.fishing = {
           s.lastTwitch = s.t;
           s.shakeUntil = s.t + 0.25;
           Sfx.tone(900, 0.06, 'triangle', 0.12);
-          floatText('キラッ', s.bx, s.by - 14, 'small');
+          wText('キラッ', s.bx, s.by - 14, 'small');
         },
       }));
     };
     const updateLure = dt => {
       const near = Math.abs(s.by - tana) < 32 && Math.abs(s.bx - spotX) < 130;
-      if (s.sub === 'fall') {
-        s.taut = false;
-        s.by = Math.min(BOTTOM, s.by + 40 * dt);
-        const c = depthM(s.by);
-        if (c > s.count) { s.count = c; floatText(String(c), s.bx + 22, s.by, 'small'); Sfx.tone(600 + c * 60, 0.06, 'sine', 0.1); }
-        if (s.by >= BOTTOM) {
-          if (Math.random() < 0.5) { snag(() => { s.by -= 40; lureRetrieve(); }); return; }
-          hintOnce('lureBottom', 'そこに ついちゃった! ねがかり しないうちに まこう!');
-          lureRetrieve();
-        }
-      } else if (s.sub === 'retrieve') {
-        if (s.hold) {
-          s.bx -= 42 * dt;
-          s.by = Math.max(WATER + 12, s.by - 6 * dt);
-          s.bend = 0.05;
-          if (Math.random() < dt * 6) Sfx.reel();
-        } else {
-          s.by = Math.min(BOTTOM, s.by + 24 * dt);
-          s.bend = 0;
-          if (s.by >= BOTTOM && Math.random() < dt * 0.5) { snag(() => { s.by -= 40; lureRetrieve(); }); return; }
-        }
-        const moving = s.hold || s.t - s.lastTwitch < 1.2;
-        if (near && moving) {
-          const chance = (0.35 + (s.t - s.lastTwitch < 1.5 ? 0.7 : 0)) * (0.6 + 0.6 * s.q);
-          if (Math.random() < chance * dt) { biteSeq(() => { App.say('また まいて さそおう!'); lureRetrieve(); }); return; }
-        } else if (near && !moving) {
-          hintOnce('lureNear', 'むれの ちかくだよ! まいたり しゃくったりして うごかそう!', 'wow');
-        } else if (!near && Math.abs(s.bx - spotX) < 130) {
-          hintOnce('lureDepth', s.by < tana ? 'むれは もっと ふかいよ。てを はなすと ルアーが しずむよ。' : 'むれは もっと あさいよ。しゃくって ルアーを うかせよう。');
-        }
-        if (s.bx <= PIER + 60) recast('ルアーが もどってきたよ。かいしゅうして もういちど なげよう!');
+      if (s.hold) {
+        s.bx -= 42 * dt;
+        s.by = Math.max(WATER + 12, s.by - 6 * dt);
+        s.bend = 0.05;
+        if (Math.random() < dt * 6) Sfx.reel();
+      } else {
+        s.by = Math.min(BOTTOM, s.by + 24 * dt);
+        s.bend = 0;
+        if (s.by >= BOTTOM && Math.random() < dt * 0.5) { snag(() => { s.by -= 40; lureRetrieve(); }); return; }
       }
+      const moving = s.hold || s.t - s.lastTwitch < 1.2;
+      if (near && moving) {
+        const chance = (0.35 + (s.t - s.lastTwitch < 1.5 ? 0.7 : 0)) * (0.6 + 0.6 * s.q);
+        if (Math.random() < chance * dt) { biteSeq(() => { App.say('また まいて さそおう!'); lureRetrieve(); }); return; }
+      } else if (near && !moving) {
+        hintOnce('lureNear', 'むれの ちかくだよ! まいたり しゃくったりして うごかそう!', 'wow');
+      } else if (!near && Math.abs(s.bx - spotX) < 130) {
+        hintOnce('lureDepth', s.by < tana ? 'むれは もっと ふかいよ。てを はなすと ルアーが しずむよ。' : 'むれは もっと あさいよ。しゃくって ルアーを うかせよう。');
+      }
+      if (s.bx <= PIER + 60) recast('ルアーが もどってきたよ。かいしゅうして もういちど なげよう!');
     };
 
-    /* サビキ */
-    const startSabiki = () => {
+    const sabikiShakeMode = first => {
       s.phase = 'mode';
-      s.sub = 'fall';
-      s.taut = false;
-      App.setStep(3);
-      gauge.hidden = false;
-      App.say(`カゴが しずんでいくよ。\nむれが いる ふかさ（たな）は ${depthM(tana)}mくらい。そこで「とめる」!`, 'wow');
-      App.setControls(App.btn('✋ ここで とめる', { cls: 'big pulse', onClick: () => sabikiStop() }));
-    };
-    const sabikiStop = () => {
-      if (s.phase !== 'mode' || s.sub !== 'fall') return;
       s.sub = 'shake';
-      s.taut = true;
       s.restY = s.by;
-      const diff = s.by - tana;
-      App.say(Math.abs(diff) < 28 ? 'ばっちり! たなに あわせたね。\n「しゃくる」で カゴから エサを だして、さかなを あつめよう!'
-        : diff < 0 ? 'むれは もっと ふかいよ。「さげる」で あわせよう。' : 'むれは もっと あさいよ。「あげる」で あわせよう。', Math.abs(diff) < 28 ? 'wow' : 'think');
+      if (first === true) App.say('カゴが たなに ついたよ!\n「しゃくる」で カゴから エサを だして、さかなを あつめよう。ワイプを みてね!', 'wow');
       sabikiControls();
     };
     const sabikiControls = () => {
-      App.setControls(
-        App.btn('⬆️ あげる', { cls: 'gray', onClick: () => { if (s.sub === 'shake') s.restY = Math.max(WATER + 15, s.restY - 18); } }),
-        App.btn(`〽️ しゃくる <small>のこり ${s.chum}</small>`, { cls: 'big', onClick: sabikiShake }),
-        App.btn('⬇️ さげる', { cls: 'gray', onClick: () => { if (s.sub === 'shake') s.restY = Math.min(BOTTOM - 10, s.restY + 18); } }),
-      );
+      App.setControls(App.btn(`〽️ しゃくる <small>のこり ${s.chum}</small>`, { cls: 'big', onClick: sabikiShake }));
     };
     const sabikiShake = () => {
       if (s.phase !== 'mode' || s.sub !== 'shake' || s.chum <= 0) return;
@@ -908,13 +845,11 @@ Scenes.fishing = {
       chumBurst(s.bx, s.restY);
       Sfx.tone(500, 0.1, 'triangle', 0.12);
       sabikiControls();
-      const near = Math.abs(s.restY - tana) < 30;
       const r = s.round;
-      if (near && Math.random() < 0.45 + 0.1 * (5 - s.chum)) {
+      if (Math.random() < 0.45 + 0.1 * (5 - s.chum)) {
         App.after(600 + Math.random() * 900, () => { if (s.round === r && s.phase === 'mode') biteSeq(sabikiResume); });
         return;
       }
-      if (!near) hintOnce('sabikiTana', 'エサが むれと ちがう ふかさで でているよ。たなを あわせよう!');
       if (s.chum <= 0) {
         App.after(1400, () => {
           if (s.round !== r || s.phase !== 'mode') return;
@@ -926,54 +861,42 @@ Scenes.fishing = {
     };
     const sabikiResume = () => {
       s.phase = 'mode';
-      if (s.chum > 0) { s.sub = 'shake'; App.say('また しゃくって さそおう!'); sabikiControls(); }
+      if (s.chum > 0) { s.sub = 'shake'; s.restY = s.by; App.say('また しゃくって さそおう!'); sabikiControls(); }
       else { s.sub = 'empty'; App.say('カゴの エサが なくなった! まきあげて つめなおそう。', 'think'); App.setControls(holdCtl('🔄 まきあげる')); }
     };
     const updateSabiki = dt => {
-      if (s.sub === 'fall') {
-        s.by = Math.min(BOTTOM - 10, s.by + 50 * dt);
-        if (s.by >= BOTTOM - 10) { App.say('そこまで おちちゃった。', 'think'); sabikiStop(); }
-      } else if (s.sub === 'shake') {
+      if (s.sub === 'shake') {
         s.by += (s.restY - s.by) * Math.min(1, dt * 6);
-      } else if (s.sub === 'empty') {
-        if (s.hold) {
-          s.by -= 80 * dt;
-          if (Math.random() < dt * 6) Sfx.reel();
-          if (s.by <= WATER - 4) {
-            s.sub = 'refill';
-            s.hold = false;
-            App.say('あがってきた! コマセカゴに アミエビを つめよう。');
-            App.setControls(App.btn('🥄 エサを つめる', {
-              cls: 'big pulse',
-              onClick: () => {
-                s.chum = 5;
-                Sfx.pop();
-                gauge.hidden = true;
-                s.phase = 'look';
-                s.bx = TIP.x; s.by = TIP.y + 30;
-                readyPhase();
-              },
-            }));
-          }
+      } else if (s.sub === 'empty' && s.hold) {
+        s.by -= 80 * dt;
+        if (Math.random() < dt * 6) Sfx.reel();
+        if (s.by <= WATER) {
+          s.by = WATER;
+          s.sub = 'refill';
+          s.hold = false;
+          App.say('あがってきた! コマセカゴに アミエビを つめよう。');
+          App.setControls(App.btn('🥄 エサを つめる', {
+            cls: 'big pulse',
+            onClick: () => {
+              s.chum = 5;
+              Sfx.pop();
+              App.setControls();
+              s.phase = 'redrop';
+              App.say('つめたよ! もういちど ベールを おろして、カゴを たなまで おとそう。', 'wow');
+              reelPanel('down', () => startFall(''));
+            },
+          }));
         }
-      } else if (s.sub === 'refill') {
-        s.by += (TIP.y + 30 - s.by) * Math.min(1, dt * 4);
       }
     };
 
-    /* さぐりづり */
-    const startSaguri = () => {
+    const saguriSearch = first => {
       s.phase = 'mode';
-      s.sub = 'fall';
-      s.taut = false;
+      s.sub = 'search';
       s.interest = 0;
       s.chons = 0;
       s.need = 2 + Math.floor(Math.random() * 2);
-      App.setStep(3);
-      App.setControls();
-      App.say(`${s.hole + 1}ばんめの あなに おとしたよ。そこまで しずむのを まとう。`);
-    };
-    const saguriControls = () => {
+      if (first === true) App.say('ブラクリが あなの そこに ついたよ!\n「ちょんちょん」で ゆっくり うごかして さそおう。ワイプで あなの なかを みてね。', 'wow');
       App.setControls(
         App.btn('〽️ ちょんちょん', { cls: 'big', onClick: saguriChon }),
         App.btn('➡️ となりの あなへ', { cls: 'blue', onClick: saguriNext }),
@@ -997,7 +920,7 @@ Scenes.fishing = {
         s.interest++;
         if (s.interest >= s.need) {
           const r = s.round;
-          App.after(400 + Math.random() * 600, () => { if (s.round === r && s.phase === 'mode') biteSeq(() => { s.phase = 'mode'; s.sub = 'search'; s.interest = 0; App.say('また ゆっくり ちょんちょん。'); saguriControls(); }); });
+          App.after(400 + Math.random() * 600, () => { if (s.round === r && s.phase === 'mode') biteSeq(() => { App.say('また ゆっくり ちょんちょん。'); saguriSearch(); }); });
         }
       } else if (s.chons >= 4) {
         hintOnce('hole' + s.hole, 'この あなには いないみたい。\nとなりの あなを さぐってみよう!');
@@ -1008,35 +931,27 @@ Scenes.fishing = {
       s.hole = (s.hole + 1) % holes.length;
       s.bx = holes[s.hole].x;
       s.by = WATER + 10;
+      s.sub = 'move';
+      App.setControls();
       Sfx.pop();
-      startSaguri();
     };
     const updateSaguri = dt => {
-      if (s.sub === 'fall') {
+      if (s.sub === 'move') {
         s.by = Math.min(BOTTOM - 14, s.by + 80 * dt);
-        if (s.by >= BOTTOM - 14) {
-          s.sub = 'search';
-          s.taut = true;
-          floatText('とん', s.bx, BOTTOM - 40, 'small');
-          App.say('あなの そこに ついたよ!\n「ちょんちょん」で、ゆっくり しかけを うごかして さそおう。');
-          saguriControls();
-        }
+        if (s.by >= BOTTOM - 14) { App.say(`${s.hole + 1}ばんめの あなに ついたよ。ゆっくり ちょんちょん。`); saguriSearch(); }
       } else if (s.sub === 'search') {
         s.by += (BOTTOM - 14 - s.by) * Math.min(1, dt * 5);
       }
     };
 
-    /* ═════ かかった! まく（かけひき） ═════ */
+    /* ═════ やりとり（てもと＋ワイプ） ═════ */
     const decideCatch = () => {
-      if (Save.total() > 0 && Math.random() < 0.1) {
-        return { junk: JUNK[Math.floor(Math.random() * JUNK.length)] };
-      }
+      if (Save.total() > 0 && Math.random() < 0.1) return { junk: JUNK[Math.floor(Math.random() * JUNK.length)] };
       const fish = pickFish();
       const [lo, hi] = fish.size;
       const bonus = s.q * 0.15 + (s.nice ? 0.12 : 0);
       const raw = lo + (hi - lo) * Math.pow(Math.random(), 1.4);
       const size = Math.min(hi, Math.round(raw * (1 + bonus)));
-      // サビキは いっぺんに なんびきも かかることが ある
       const multi = MODE === 'sabiki' ? 1 + (Math.random() < 0.4 ? 1 : 0) + (Math.random() < 0.15 ? 1 : 0) : 1;
       return { fish, size, multi };
     };
@@ -1045,10 +960,9 @@ Scenes.fishing = {
       s.nice = s.t - s.sinkT < 0.9;
       s.round++;
       s.phase = 'reel';
-      s.biteX = null;
+      s.eat = null;
       s.hold = false;
       s.hookBtn = null;
-      showFP(false);
       App.setStep(4);
       s.catch = decideCatch();
       s.dist = 100;
@@ -1059,17 +973,22 @@ Scenes.fishing = {
       s.strugCount = 0;
       s.nextSwitch = s.t + 2.2;
       s.reelStart = s.bx;
-      s.reelDepth = s.by;
-      gauge.hidden = true;
+      s.reelDepth = useBobber ? s.baitY : s.by;
+      s.dip = 0;
       const f = s.catch.fish;
       const sz = (s.catch.size || 20) * (s.catch.multi || 1) ** 0.5;
       s.power = f ? 0.8 + sz / (sz + 30) + (f.rare ? 0.3 : 0) : 1.3;
-      shadow.setAttribute('opacity', '1');
-      const sc = f ? 0.6 + sz / 50 : 0.9;
-      shadowInner.setAttribute('transform', `scale(-${sc},${sc})`);
+      // ワイプに かかった ものを えがく（はりは くちの ところ）
+      const sc = f ? 0.2 + sz / 160 : 0.5;
+      hookedIn.innerHTML = f
+        ? `<g transform="scale(${sc.toFixed(2)})"><svg x="-190" y="-68" width="214" height="136" viewBox="0 0 214 136">${Art.fish(f).replace(/^\s*<svg[^>]*>|<\/svg>\s*$/g, '')}</svg></g>`
+        : `<text x="0" y="10" text-anchor="middle" font-size="30">${s.catch.junk.icon}</text>`;
+      hookedIn.removeAttribute('transform');
+      hookedG.setAttribute('opacity', '1');
+      holeFish.setAttribute('opacity', '0');
       Sfx.good();
-      floatText(s.nice ? 'ナイス あわせ!' : 'かかった!', s.bx, WATER - 60, 'big');
-      splash(s.bx);
+      fpText(s.nice ? 'ナイス あわせ!' : 'かかった!', 430, 110, 'big');
+      fpSplash(8);
       App.say((s.nice ? 'ナイス あわせ!\n' : 'かかった!\n')
         + '「まく」を おしている あいだ いとが まけるよ。\nいとが あかく なったり、さかなが あばれたら、てを はなしてね! きれちゃうよ!', 'wow');
 
@@ -1094,8 +1013,7 @@ Scenes.fishing = {
         s.nextSwitch = s.t + (1.2 + Math.random() * 0.8) * Math.min(1.3, s.power);
         if (s.strugCount <= 2) App.say('あばれてる! てを はなして まって!', 'think');
         Sfx.splash();
-        splash(s.bx, WATER);
-        // ときどき はりが はずれる（#9）。あわせが おそいと バレやすい
+        fpSplash(6);
         if (!s.baraDone && s.strugCount >= 2) {
           s.baraDone = true;
           if (Math.random() < (s.nice ? 0.08 : 0.2)) { App.after(500, () => { if (s.phase === 'reel') barashi(); }); return; }
@@ -1107,29 +1025,30 @@ Scenes.fishing = {
       }
     };
 
-    // さかなが みずから とびだす
+    // さかなが みずから とびだす（てもと がめん）
     const jump = () => {
       const f = s.catch.fish;
-      const x0 = s.bx;
+      const p0 = entry();
       const g = document.createElementNS(NS, 'g');
-      g.innerHTML = `<svg x="-45" y="-29" width="90" height="58" viewBox="0 0 214 136">${Art.fish(f).replace(/^\s*<svg[^>]*>|<\/svg>\s*$/g, '')}</svg>`;
-      jumper.appendChild(g);
-      floatText('ばしゃっ!', x0, WATER - 90, 'big');
+      const w = 60 + 120 * p0.k;
+      g.innerHTML = `<svg x="${(-w / 2).toFixed(1)}" y="${(-w * 0.32).toFixed(1)}" width="${w.toFixed(1)}" height="${(w * 0.64).toFixed(1)}" viewBox="0 0 214 136">${Art.fish(f).replace(/^\s*<svg[^>]*>|<\/svg>\s*$/g, '')}</svg>`;
+      fpSvg.querySelector('#fpJump').appendChild(g);
+      fpText('ばしゃっ!', p0.x, p0.y - 100 * p0.k - 40, 'big');
       let t = 0;
       App.loop(dt => {
         t += dt / 0.8;
-        const y = WATER - 20 - Math.sin(Math.PI * Math.min(1, t)) * 80;
-        g.setAttribute('transform', `translate(${(x0 - t * 20).toFixed(1)},${y.toFixed(1)}) rotate(${(-40 + t * 80).toFixed(1)})`);
-        if (t >= 1) { g.remove(); splash(x0 - 20, WATER, 9); Sfx.splash(); return false; }
+        const y = p0.y - Math.sin(Math.PI * Math.min(1, t)) * (60 + 120 * p0.k);
+        g.setAttribute('transform', `translate(${p0.x.toFixed(1)},${y.toFixed(1)}) rotate(${(-40 + t * 80).toFixed(1)})`);
+        if (t >= 1) { g.remove(); fpSplash(9); Sfx.splash(); return false; }
       });
     };
 
     const landFish = () => {
       s.phase = 'landed';
       Sfx.splash();
-      splash(s.bx, WATER);
-      shadow.setAttribute('opacity', '0');
-      floatText(s.catch.junk ? 'あれ?' : 'つれた!', s.bx, WATER - 70, 'big');
+      fpSplash(10);
+      hookedG.setAttribute('opacity', '0');
+      fpText(s.catch.junk ? 'あれ?' : 'つれた!', 430, 120, 'big');
       App.setControls();
       Save.data.tutorialDone = true;
       Save.write();
@@ -1150,8 +1069,6 @@ Scenes.fishing = {
       }
       s.tension = Math.min(100, Math.max(0, s.tension));
       s.dist = Math.min(100, s.dist);
-
-      // いとが あかい まま まきつづけると きれる（#9）
       if (s.tension >= 100 && s.holding) {
         s.breakT += dt;
         if (s.breakT > 0.9) { lineBreak('fight'); return; }
@@ -1162,68 +1079,135 @@ Scenes.fishing = {
         s.warnT = s.t;
         Sfx.strain();
         s.ui.bar.classList.remove('flash'); void s.ui.bar.offsetWidth; s.ui.bar.classList.add('flash');
-        floatText('きれそう!', s.bx, WATER - 60, 'small');
+        fpText('きれそう!', 430, 130, 'small');
       }
       s.bend = 0.1 + s.tension / 400 + (s.struggling ? 0.08 : 0);
 
-      const danger = s.tension > 70;
+      const dangerT = s.tension > 70;
       s.ui.fill.style.width = s.tension + '%';
-      s.ui.fill.classList.toggle('danger', danger);
+      s.ui.fill.classList.toggle('danger', dangerT);
       s.ui.dfish.style.left = (s.dist * 0.88) + '%';
       let msg, cls;
       if (s.tension > 85 && s.holding) { msg = 'きれちゃう! てを はなして!'; cls = 'fight'; }
       else if (s.struggling) { msg = 'あばれてる! てを はなして!'; cls = 'fight'; }
-      else if (danger && s.holding) { msg = 'いとが ピンピン! てを はなそう'; cls = 'fight'; }
+      else if (dangerT && s.holding) { msg = 'いとが ピンピン! てを はなそう'; cls = 'fight'; }
       else { msg = s.holding ? 'いいぞ! まいてる!' : 'おして まこう!'; cls = 'calm'; }
       if (s.ui.status.textContent !== msg) { s.ui.status.textContent = msg; s.ui.status.className = 'reel-status ' + cls; }
 
-      const wig = s.struggling ? Math.sin(s.t * 22) * 8 : Math.sin(s.t * 4) * 2;
+      // さかなが ちかづいて、あさく なってくる
       const k = Math.max(0, s.dist) / 100;
-      const fxX = PIER + 25 + (s.reelStart - PIER - 25) * k;
-      const fy = WATER + 30 + (Math.max(WATER + 30, s.reelDepth) - WATER - 30) * k + (s.struggling ? 6 : 0);
-      shadow.setAttribute('transform', `translate(${(fxX + wig).toFixed(1)},${fy.toFixed(1)}) rotate(${wig})`);
-      s.bx = fxX + wig * 0.5;
-      s.by = useBobber ? WATER + 8 + (s.struggling ? 10 : 0) : fy - 4;
-      if (s.struggling && Math.random() < dt * 3) ripple(s.bx);
+      const wig = s.struggling ? Math.sin(s.t * 22) * 8 : Math.sin(s.t * 4) * 2;
+      s.bx = PIER + 25 + (s.reelStart - PIER - 25) * k + wig * 0.5;
+      s.by = WATER + 25 + (s.reelDepth - WATER - 25) * k + (s.struggling ? 6 : 0);
+      if (useBobber) s.baitY = s.by;
+      hookedG.setAttribute('transform', `translate(${s.bx.toFixed(1)},${s.by.toFixed(1)}) rotate(${(wig * 2).toFixed(1)})`);
+      if (s.struggling && Math.random() < dt * 3) fpRipple();
       if (s.dist <= 0) landFish();
     };
 
-    /* ── まいフレーム ── */
+    /* ═════ えがく ═════ */
+    const fpLine = fpSvg.querySelector('#fpLine'), fpRod = fpSvg.querySelector('#fpRod'), fpRodTip = fpSvg.querySelector('#fpRodTip');
+    const fpRodLine = fpSvg.querySelector('#fpRodLine'), fpBail = fpSvg.querySelector('#fpBail'), fpTarget = fpSvg.querySelector('#fpTarget');
+    const drawFP = () => {
+      let b = s.bendCur;
+      if (s.t < s.shakeUntil) b += Math.sin(s.t * 45) * 0.05;
+      const tip = { x: 430 + b * 160, y: 110 + b * 330 };
+      const mx = (705 + tip.x) / 2 + 10, my = (460 + tip.y) / 2 - 20 + b * 80;
+      fpRod.setAttribute('d', `M705 460 Q${(620 + b * 40).toFixed(1)} ${(330 + b * 60).toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`);
+      fpRodTip.setAttribute('d', `M${mx.toFixed(1)} ${my.toFixed(1)} Q${((tip.x + 560) / 2).toFixed(1)} ${(tip.y + 70 + b * 40).toFixed(1)} ${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`);
+      fpRodLine.setAttribute('d', `M604 388 L${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`);
+      fpBail.setAttribute('d', s.bailOpen ? 'M-50 -6 Q-30 44 -4 26' : 'M-50 -6 Q-36 -46 -4 -30');
+      const p = entry();
+      const lying = s.phase === 'fall' && s.baitY < s.fallTo - 4; // エサが しずむまで ウキは ねている
+      if (useBobber && s.phase !== 'reel') {
+        const yy = p.y + s.dipCur * p.k * 0.9 + Math.sin(s.t * 2.2) * 1.5 * p.k;
+        fpTarget.innerHTML = `<g transform="translate(${p.x.toFixed(1)} ${yy.toFixed(1)}) scale(${(p.k * 1.4).toFixed(2)}) rotate(${lying ? 80 : 0})" opacity="${s.dipCur > 20 ? 0.35 : 1}">
+            <rect x="-2" y="-24" width="4" height="13" fill="#e53935"/><path d="M-10 0 A10 10 0 0 1 10 0 Z" fill="#e53935"/><path d="M-10 0 A10 10 0 0 0 10 0 Z" fill="#fff" opacity=".5"/></g>
+          <ellipse cx="${p.x.toFixed(1)}" cy="${(p.y + 2).toFixed(1)}" rx="${(16 * p.k + 3).toFixed(1)}" ry="${(4 * p.k + 1).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="1.5"/>`;
+      } else {
+        fpTarget.innerHTML = `<ellipse cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" rx="${(14 * p.k + 3).toFixed(1)}" ry="${(3.5 * p.k + 1).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="1.5"/>`;
+      }
+      const endY = useBobber && s.phase !== 'reel' ? p.y - 24 * p.k * 1.4 + s.dipCur * p.k * 0.9 : p.y;
+      const sag = s.phase === 'reel' ? (s.tension > 60 ? 0 : 14) : (s.taut || useBobber ? 18 : 60);
+      fpLine.setAttribute('d', `M${tip.x.toFixed(1)} ${tip.y.toFixed(1)} Q${((tip.x + p.x) / 2).toFixed(1)} ${(Math.max(tip.y, endY) + sag).toFixed(1)} ${p.x.toFixed(1)} ${endY.toFixed(1)}`);
+      fpLine.classList.toggle('taut', s.phase === 'reel' && s.tension > 70);
+    };
+
+    const drawWipe = dt => {
+      const bait = baitPos();
+      // カメラは しかけを おいかける
+      const tx = Math.max(PIER + 90, Math.min(FAR - 90, bait.x));
+      const ty = Math.max(WATER - 30, Math.min(BOTTOM + 30 - 140, bait.y - 78));
+      s.cam.x += (tx - s.cam.x) * Math.min(1, dt * 3);
+      s.cam.y += (ty - s.cam.y) * Math.min(1, dt * 3);
+      wSvg.setAttribute('viewBox', `${(s.cam.x - 110).toFixed(1)} ${s.cam.y.toFixed(1)} 220 140`);
+
+      const lying = s.phase === 'fall' && s.baitY < s.fallTo - 4;
+      if (useBobber) {
+        wBob.setAttribute('transform', `translate(${s.bx.toFixed(1)},${(WATER + s.dipCur * 0.6).toFixed(1)}) rotate(${lying ? 80 : 0})`);
+        leader.setAttribute('d', s.phase === 'reel' ? '' : `M${s.bx.toFixed(1)} ${(WATER + 8 + s.dipCur * 0.6).toFixed(1)} L${bait.x.toFixed(1)} ${(bait.y - 6).toFixed(1)}`);
+        wLine.setAttribute('d', s.phase === 'reel'
+          ? `M${(bait.x - 120).toFixed(1)} ${WATER - 90} L${bait.x.toFixed(1)} ${bait.y.toFixed(1)}`
+          : `M${(s.bx - 120).toFixed(1)} ${WATER - 90} Q${(s.bx - 40).toFixed(1)} ${WATER - 30} ${s.bx.toFixed(1)} ${(WATER - 22).toFixed(1)}`);
+        wBob.style.display = s.phase === 'reel' ? 'none' : '';
+      } else {
+        leader.setAttribute('d', '');
+        const topY = MODE === 'sabiki' ? bait.y - 11 : bait.y - 6;
+        wLine.setAttribute('d', `M${(bait.x - 120).toFixed(1)} ${WATER - 90} Q${(bait.x - 20).toFixed(1)} ${(s.taut ? WATER : WATER + 30).toFixed(1)} ${bait.x.toFixed(1)} ${topY.toFixed(1)}`);
+      }
+      weight.setAttribute('transform', `translate(${bait.x.toFixed(1)},${bait.y.toFixed(1)})`);
+      if (s.phase === 'reel') weight.setAttribute('opacity', s.catch && s.catch.fish ? '0' : '1');
+      wLine.classList.toggle('taut', s.phase === 'reel' && s.tension > 70);
+
+      // エサを たべる さかなの うごき
+      const eatPos = (x0, y0) => {
+        const e = s.eat;
+        if (!e) return null;
+        const u = Math.min(1, (s.t - e.t0) / 0.9);
+        const side = bait.x > x0 ? -1 : 1;
+        const near = { x: bait.x + side * 16, y: bait.y };
+        let x = x0, y = y0;
+        if (e.mode === 'approach') { x = x0 + (near.x - x0) * u; y = y0 + (near.y - y0) * u; }
+        else if (e.mode === 'peck') { x = near.x - side * Math.abs(Math.sin((s.t - e.t0) * 9)) * 7; y = near.y; }
+        else if (e.mode === 'bite') { x = bait.x + side * 7; y = bait.y + 2; }
+        else if (e.mode === 'leave') { x = near.x + side * 70 * u; y = near.y + 10 * u; }
+        return { x, y, dir: bait.x >= x ? 1 : -1 };
+      };
+      school.forEach((f, i) => {
+        const cx = MODE === 'sabiki' ? PIER + 90 : spotX;
+        let x = cx + Math.sin(s.t * 0.6 + f.ph) * (MODE === 'sabiki' ? 45 : 60);
+        let y = (MODE === 'choinage' ? BOTTOM - 12 + f.dy * 0.3 : tana + f.dy) + Math.sin(s.t * 1.3 + f.ph) * 4;
+        let dir = Math.cos(s.t * 0.6 + f.ph) >= 0 ? 1 : -1;
+        if (i === 0) { const e = eatPos(x, y); if (e) ({ x, y, dir } = e); }
+        f.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${dir},1)`);
+        f.g.setAttribute('opacity', s.phase === 'reel' || s.phase === 'landed' ? '0' : '1');
+      });
+      if (MODE === 'saguri') {
+        const e = eatPos(bait.x + 18, BOTTOM - 6);
+        if (e && s.phase === 'bite') {
+          holeFish.setAttribute('opacity', '1');
+          holeFish.setAttribute('transform', `translate(${e.x.toFixed(1)},${e.y.toFixed(1)}) scale(${e.dir},1)`);
+        } else if (s.phase !== 'reel') holeFish.setAttribute('opacity', '0');
+      }
+      depthEl.textContent = `ふかさ ${depthM(bait.y)}m`;
+    };
+
+    /* ═════ まいフレーム ═════ */
     App.loop(dt => {
       s.t += dt;
       s.bendCur += (s.bend - s.bendCur) * Math.min(1, dt * 10);
-
-      if (s.phase === 'look' || s.phase === 'aim') {
-        s.bx = TIP.x;
-        s.by = TIP.y + (useBobber ? 0 : 30);
-        weight.setAttribute('opacity', useBobber ? '0' : '1');
-      } else if (s.phase === 'flying') {
-        s.fu = Math.min(1, s.fu + dt / (isDrop ? 0.6 : 0.9));
-        const u = s.fu;
-        s.bx = s.startX + (s.landX - s.startX) * u;
-        s.by = s.startY + (WATER - s.startY) * u - Math.sin(Math.PI * u) * (isDrop ? 30 : 130);
-        if (u >= 1) landed();
-      } else if (s.phase === 'mode' || s.phase === 'bite') {
-        if (useBobber) {
-          s.dipCur += (s.dip - s.dipCur) * Math.min(1, dt * 14);
-          s.by = WATER + Math.sin(s.t * 2.2) * 2.5 + s.dipCur;
-        } else if (s.phase === 'mode') {
-          ({ choinage: updateChoi, lure: updateLure, sabiki: updateSabiki, saguri: updateSaguri }[MODE])(dt);
-        }
-        if (s.biteX !== null) s.biteX = s.bx;
-      } else if (s.phase === 'reel') {
-        reelUpdate(dt);
-      }
-      draw();
-      fpDraw();
+      s.dipCur += (s.dip - s.dipCur) * Math.min(1, dt * 14);
+      if (s.phase.startsWith('tp') || s.phase === 'wait-recast') drawTP(dt);
+      if (s.phase === 'fall') updateFall(dt);
+      else if (s.phase === 'mode') {
+        if (!useBobber) ({ choinage: updateChoi, lure: updateLure, sabiki: updateSabiki, saguri: updateSaguri }[MODE])(dt);
+      } else if (s.phase === 'reel') reelUpdate(dt);
+      if (!fpLayer.classList.contains('off')) { drawFP(); drawWipe(dt); }
     });
 
-    draw();
-    fpDraw();
-    look();
+    tpPhase();
     return () => {
       window.removeEventListener('resize', fit);
-      st.style.background = '';
     };
   },
 };
