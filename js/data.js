@@ -190,7 +190,12 @@ const FISH_SIZE = {
   haze: [8, 15], kisu: [12, 25], karei: [15, 35], aji: [12, 30], iwashi: [10, 20], saba: [20, 40], mebaru: [12, 25],
   kasago: [10, 25], kamasu: [20, 40], ainame: [20, 40], kurodai: [25, 50], suzuki: [30, 70], tai: [20, 50],
 };
-FISH.forEach(f => { f.size = FISH_SIZE[f.id]; });
+// さかなが すきな さそいかた（move: うごかす / reel: すこし まく / stop: じっと まつ）
+const FISH_LIKES = {
+  haze: ['move'], kisu: ['reel'], karei: ['stop'], aji: ['move'], iwashi: ['move', 'reel'], saba: ['reel'], mebaru: ['stop'],
+  kasago: ['move'], kamasu: ['reel'], ainame: ['move', 'stop'], kurodai: ['stop'], suzuki: ['reel', 'move'], tai: ['stop', 'move'],
+};
+FISH.forEach(f => { f.size = FISH_SIZE[f.id]; f.likes = FISH_LIKES[f.id]; });
 const FISH_BY_ID = Object.fromEntries(FISH.map(f => [f.id, f]));
 
 // ときどき つれる ごみ（うみを きれいに しよう）

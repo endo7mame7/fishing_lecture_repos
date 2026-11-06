@@ -48,6 +48,7 @@ const FP = {
   <g id="fpSpot"></g>
   <g id="fpTarget"></g>
   <g id="fpJump"></g>
+  <g id="fpLand"></g>
   <path id="fpLine" fill="none" stroke="#f4f4f4" stroke-width="1.6" opacity=".95"/>
   <rect x="-2000" y="418" width="4800" height="400" fill="#a8743f"/>
   <path d="M-2000 418 H2800" stroke="#8a5c30" stroke-width="4"/>
@@ -63,6 +64,7 @@ const FP = {
     <path id="fpBail" fill="none" stroke="#d6dbe0" stroke-width="5" stroke-linecap="round"/>
   </g>
   <path d="M700 470 Q660 420 700 395 Q750 380 790 420 L800 470 Z" fill="#f2c49b"/>
+  <g id="fpNet"></g>
   <g id="fpFx"></g>
 </svg>`;
   },
@@ -170,9 +172,9 @@ Scenes.fishing = {
     const st = App.stage;
     st.classList.add('stage-sea');
     st.innerHTML = `
-      <div class="fp-layer">${FP.svg()}<div class="fp-flash"></div></div>
+      <div class="fp-layer">${FP.svg()}<div class="fp-flash"></div><div class="run-hint" hidden></div></div>
       <div class="tp-layer">${TP.svg()}</div>
-      <div class="wipe" hidden><div class="wipe-in">${Art.seaScene()}</div><span class="wipe-lbl">🔍 うみの なか</span><span class="wipe-depth"></span></div>
+      <div class="wipe" hidden><div class="wipe-in">${Art.seaScene()}</div><span class="wipe-lbl">🔍 うみの なか</span><span class="wipe-depth"></span><span class="want-badge" hidden></span></div>
       <div class="reel-panel" hidden>${REEL_PANEL}</div>
       <div class="cast-steps"></div>
       <div class="sea-hud">きょう 🐟 ${Today.fish}ひき${Today.junk ? ` ・ 🗑️ ${Today.junk}こ` : ''}</div>`;
@@ -182,7 +184,7 @@ Scenes.fishing = {
     const fpLayer = q$('.fp-layer'), tpLayer = q$('.tp-layer'), wipe = q$('.wipe'), panel = q$('.reel-panel');
     const fpSvg = fpLayer.querySelector('svg'), tpSvg = tpLayer.querySelector('svg');
     const wSvg = wipe.querySelector('svg');
-    const stepsEl = q$('.cast-steps'), depthEl = q$('.wipe-depth');
+    const stepsEl = q$('.cast-steps'), depthEl = q$('.wipe-depth'), wantBadge = q$('.want-badge');
 
     /* ── うみの なかの いち: x = ていぼうからの きょり、y = ふかさ ── */
     const WATER = 240, PIER = 218, BOTTOM = 362, FAR = 760, SPAN = FAR - PIER;
@@ -300,7 +302,7 @@ Scenes.fishing = {
       layer.appendChild(e);
       setTimeout(() => e.remove(), 1200);
     };
-    const entry = () => FP.pos(toD(s.bx), s.lat);
+    const entry = () => FP.pos(toD(s.bx), s.lat + (s.phase === 'reel' ? (s.runCur || 0) * 0.35 : 0));
     const fpRipple = big => { const p = entry(); ring(fpFx, p.x, p.y, (big ? 40 : 22) * p.k + 4, (big ? 10 : 6) * p.k + 1.5); };
     const fpSplash = n => {
       const p = entry();
@@ -536,8 +538,15 @@ Scenes.fishing = {
       let msg = '';
       if (!isDrop) {
         if (s.q > 0.75) { msg = 'どんぴしゃ! ポイントに はいったよ!'; Sfx.good(); addText(tpFx, 'どんぴしゃ!', tp.x, tp.y - 40, 'big'); }
-        else if (s.q > 0.35) msg = 'おしい! ポイントの ちかくだよ。';
-        else msg = 'ポイントから すこし はなれちゃった。';
+        else {
+          // どっちに ずれたか おしえる
+          const tips = [];
+          if (s.landD > spotD + 0.08) tips.push('とおすぎたよ。すこし みじかく スワイプしよう');
+          else if (s.landD < spotD - 0.08) tips.push('ちかすぎたよ。もっと ながく シュッと スワイプしよう');
+          if (s.lat > spotLat + 0.25) tips.push('みぎに ずれたよ');
+          else if (s.lat < spotLat - 0.25) tips.push('ひだりに ずれたよ');
+          msg = (s.q > 0.35 ? 'おしい! ポイントの ちかくだよ。' : 'ポイントから はなれちゃった。') + (tips.length ? '\n' + tips.join('。') + '。' : '');
+        }
       }
       s.first = false;
       App.after(isDrop ? 300 : 800, () => startFall(msg));
@@ -573,15 +582,10 @@ Scenes.fishing = {
         App.say(MODE === 'choinage' || MODE === 'saguri'
           ? 'そこに ついたよ! ベールを もどして いとを とめよう。\nリールの えを うえに スワイプ!'
           : 'たなに ついたよ! ベールを もどして いとを とめよう。\nリールの えを うえに スワイプ!', 'wow');
-        reelPanel('up', () => { s.taut = true; startMode(); });
+        reelPanel('up', () => { s.taut = true; startMode(s.firstMode !== false); s.firstMode = false; });
       }
     };
 
-    const startMode = () => {
-      s.phase = 'mode';
-      App.setStep(3);
-      ({ uki: startUki, choinage: choiDrag, lure: lureRetrieve, sabiki: sabikiShakeMode, saguri: saguriSearch }[MODE])(true);
-    };
 
     // もういちど なげる
     const recast = msg => {
@@ -603,8 +607,8 @@ Scenes.fishing = {
       const hookBtn = App.btn('✊ あわせる! <small>うえに シュッ</small>', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
       s.hookBtn = hookBtn;
       App.setControls(hookBtn);
-      s.eat = { mode: 'approach', t0: s.t };
-      let tt = 900 + Math.random() * 500;
+      s.eat = { mode: 'near', t0: s.t };
+      let tt = 400 + Math.random() * 400;
       const n = 1 + Math.floor(Math.random() * 2);
       for (let i = 0; i < n; i++) {
         App.after(tt, () => { if (s.round === r) nibble(); });
@@ -679,7 +683,7 @@ Scenes.fishing = {
     };
     // てもと がめんを うえに スワイプで アワセ
     onSwipe(fpLayer, ({ dy }) => {
-      if (dy < -40 && (s.phase === 'bite' || (useBobber && s.phase === 'mode'))) {
+      if (dy < -40 && s.phase === 'bite') {
         fpText('くいっ!', 430, 90, 'small');
         onHook(s.hookBtn);
       }
@@ -746,214 +750,285 @@ Scenes.fishing = {
       App.after(2600, () => recast());
     };
 
-    /* ═════ つりかたごとの さそいかた ═════ */
+    /* ═════ さそう: さかなごとに すきな さそいかたが ちがう ═════
+       さかなが よってくると ふきだしに すきな さそいかたが でる
+       〽️ うごかす / 🔄 すこし まく / ✋ じっと まつ
+       あっていれば すこしずつ きょうみを もち、なんかいか あうと たべにくる */
+    const LIKE = {
+      move: { icon: '〽️', label: 'うごかす', hint: 'うごかすと よってくる' },
+      reel: { icon: '🔄', label: 'すこし まく', hint: 'すこし まくと おいかけてくる' },
+      stop: { icon: '✋', label: 'じっと まつ', hint: 'じっと まっていると たべにくる' },
+    };
+    const MOVE_LBL = { uki: '〽️ ちょっと うごかす', choinage: '〽️ ちょんと うごかす', lure: '⤴️ しゃくる', sabiki: '〽️ しゃくる', saguri: '〽️ ちょんちょん' };
+    const REEL_LBL = { uki: '🔄 すこし まく', choinage: '🔄 すこし まく（サビく）', lure: '🔄 まく', sabiki: '🔄 すこし まく', saguri: '🔄 すこし まく' };
 
-    const startUki = first => {
-      s.phase = 'mode';
-      const r = ++s.round;
-      const hookBtn = App.btn('✊ あわせる! <small>うえに シュッ</small>', { cls: 'big hook-btn', onClick: () => onHook(hookBtn) });
-      s.hookBtn = hookBtn;
-      App.setControls(hookBtn);
-      if (first) App.say('ウキが たったよ! ワイプで エサを みていてね。\nさかなが ぱくっと たべて、ウキが しずんだら すぐ あわせる!', 'wow');
-      const wait = ((first ? 3500 : 2200) + Math.random() * 2000) * (1.4 - 0.8 * s.q);
-      App.after(wait, () => { if (s.round === r) biteSeq(() => startUki(false)); });
+    // ねらう さかな（ワイプで みえる）
+    const tgt = document.createElementNS(NS, 'g');
+    const tgtImg = document.createElementNS(NS, 'g');
+    const tgtBubble = document.createElementNS(NS, 'g');
+    tgt.appendChild(tgtImg);
+    tgt.setAttribute('opacity', '0');
+    schoolG.appendChild(tgt);
+    schoolG.appendChild(tgtBubble);
+    s.tgtPos = { x: spotX + 140, y: tana };
+
+    const newTarget = delay => {
+      s.target = pickFish();
+      s.fishSt = 'away';
+      s.side = Math.random() < 0.5 ? -1 : 1;
+      s.approachT = s.t + (delay + Math.random() * 2) * (1.4 - 0.7 * s.q);
+      s.score = 0;
+      s.need = 2 + (Math.random() < 0.5 ? 1 : 0);
+      s.miss = 0;
+      s.want = null;
+      s.flinchT = -9;
+      s.tgtPos = { x: s.bx + 150 * s.side, y: baitPos().y + 10 };
+      const f = s.target, k = 0.13 + (f.size[1] / 400);
+      tgtImg.innerHTML = `<g transform="scale(${k.toFixed(3)})"><svg x="-107" y="-68" width="214" height="136" viewBox="0 0 214 136">${Art.fish(f).replace(/^\s*<svg[^>]*>|<\/svg>\s*$/g, '')}</svg></g>`;
+    };
+    const fishAllowed = () => {
+      if (MODE === 'saguri') return holes[s.hole].fish;
+      if (MODE === 'lure' || MODE === 'choinage') return Math.abs(s.bx - spotX) < 170;
+      return true;
+    };
+    const pickWant = () => {
+      const likes = s.target.likes || ['move'];
+      s.want = likes[Math.floor(Math.random() * likes.length)];
+      s.wantT = s.t;
     };
 
-    const choiDrag = first => {
-      s.phase = 'mode';
-      s.sub = 'drag';
-      s.interest = 0;
-      s.need = (2.2 + Math.random() * 2.5) * (1.4 - 0.6 * s.q);
-      if (first === true) App.say('ボタンを おしている あいだ、ゆっくり ひいて（サビいて）すなの そこを さぐろう。\nいわに ひっかけないように ワイプを みてね!', 'wow');
-      App.setControls(holdCtl('🐢 ゆっくり ひく（サビく）'));
+    const modeControls = () => {
+      const btns = [
+        App.btn(MODE_SABIKI_LBL(), { cls: 'big', onClick: () => act('move') }),
+        App.btn(REEL_LBL[MODE], { cls: 'big blue', onClick: () => act('reel') }),
+      ];
+      if (MODE === 'saguri') btns.push(App.btn('➡️ となりの あなへ', { cls: 'gray', onClick: saguriNext }));
+      if (!isDrop) btns.push(App.btn('↩️ なげなおす', { cls: 'gray', onClick: () => { if (s.phase === 'mode' && !s.sub) recast('しかけを まいて かいしゅう! もういちど なげよう。'); } }));
+      App.setControls(...btns);
     };
-    const updateChoi = dt => {
-      if (s.hold) {
-        s.bx -= 16 * dt;
-        s.interest += dt;
-        s.idleT = 0;
-        s.bend = 0.05;
-        if (rocks.some(x => Math.abs(s.bx - x) < 16)) {
-          snag(() => { s.bx -= 34; App.say('ゆっくり ひいて さそおう。'); choiDrag(); });
+    function MODE_SABIKI_LBL() { return MODE === 'sabiki' ? `〽️ しゃくる <small>エサ のこり ${s.chum}</small>` : MOVE_LBL[MODE]; }
+
+    const startMode = first => {
+      s.phase = 'mode';
+      s.sub = '';
+      App.setStep(3);
+      s.taut = true;
+      s.restY = useBobber ? s.baitY : s.by;
+      s.bounce = 0;
+      s.lastAct = s.t;
+      if (MODE === 'sabiki' && s.chum <= 0) { sabikiEmpty(); return; }
+      s.hinted.far = false; // なげるたびに「とおい」ヒントを だせるように
+      newTarget(first ? 2 : 1.2);
+      modeControls();
+      if (first) {
+        App.say('ワイプを みてね! さかなが きたら、ふきだしの とおりに さそおう。\n〽️ = うごかす　🔄 = すこし まく　✋ = じっと まつ', 'wow');
+      }
+    };
+
+    const act = kind => {
+      if (s.phase !== 'mode' || s.sub) return;
+      s.lastAct = s.t;
+      if (kind === 'move') {
+        if (MODE === 'sabiki') {
+          if (s.chum <= 0) { sabikiEmpty(); return; }
+          s.chum--;
+          chumBurst(s.bx, s.restY);
+        }
+        s.bounce = MODE === 'lure' ? 26 : 14;
+        if (MODE === 'lure') s.restY = Math.max(WATER + 12, s.restY - 16);
+        s.shakeUntil = s.t + 0.25;
+        Sfx.tone(800, 0.06, 'triangle', 0.12);
+        if (useBobber) { s.dip = -4; App.after(200, () => { if (s.dip < 0) s.dip = 0; }); }
+      } else {
+        Sfx.reel();
+        if (isDrop) s.bounce = 22; // あしもとの つりは すこし あげて ゆっくり もどす
+        else s.bx -= MODE === 'lure' ? 24 : 12;
+        if (MODE === 'choinage' && rocks.some(x => Math.abs(s.bx - x) < 16)) {
+          snag(() => { s.bx -= 34; startMode(false); });
           return;
         }
-      } else {
-        s.interest += 0.3 * dt;
-        s.idleT += dt;
-        s.bend = 0;
-        if (s.idleT > 6) hintOnce('choiIdle', 'ときどき ゆっくり ひいて、さかなを さそおう!');
       }
-      if (s.interest >= s.need) { biteSeq(() => { App.say('また ゆっくり ひいて さそおう。'); choiDrag(); }); return; }
-      if (s.bx <= PIER + 70) recast('しかけが てまえまで もどってきたよ。もういちど なげよう!');
-    };
-
-    const lureRetrieve = first => {
-      s.phase = 'mode';
-      s.sub = 'retrieve';
-      if (first === true) App.say('ルアーが むれの たなに ついたよ!\nおしている あいだ まく・はなすと しずむ。「しゃくる」で ピョンと うごかして さそおう!', 'wow');
-      App.setControls(holdCtl('🔄 まく'), App.btn('⤴️ しゃくる', {
-        cls: 'big blue',
-        onClick: () => {
-          if (s.phase !== 'mode' || s.sub !== 'retrieve') return;
-          s.by = Math.max(WATER + 10, s.by - 26);
-          s.lastTwitch = s.t;
-          s.shakeUntil = s.t + 0.25;
-          Sfx.tone(900, 0.06, 'triangle', 0.12);
-          wText('キラッ', s.bx, s.by - 14, 'small');
-        },
-      }));
-    };
-    const updateLure = dt => {
-      const near = Math.abs(s.by - tana) < 32 && Math.abs(s.bx - spotX) < 130;
-      if (s.hold) {
-        s.bx -= 42 * dt;
-        s.by = Math.max(WATER + 12, s.by - 6 * dt);
-        s.bend = 0.05;
-        if (Math.random() < dt * 6) Sfx.reel();
-      } else {
-        s.by = Math.min(BOTTOM, s.by + 24 * dt);
-        s.bend = 0;
-        if (s.by >= BOTTOM && Math.random() < dt * 0.5) { snag(() => { s.by -= 40; lureRetrieve(); }); return; }
-      }
-      const moving = s.hold || s.t - s.lastTwitch < 1.2;
-      if (near && moving) {
-        const chance = (0.35 + (s.t - s.lastTwitch < 1.5 ? 0.7 : 0)) * (0.6 + 0.6 * s.q);
-        if (Math.random() < chance * dt) { biteSeq(() => { App.say('また まいて さそおう!'); lureRetrieve(); }); return; }
-      } else if (near && !moving) {
-        hintOnce('lureNear', 'むれの ちかくだよ! まいたり しゃくったりして うごかそう!', 'wow');
-      } else if (!near && Math.abs(s.bx - spotX) < 130) {
-        hintOnce('lureDepth', s.by < tana ? 'むれは もっと ふかいよ。てを はなすと ルアーが しずむよ。' : 'むれは もっと あさいよ。しゃくって ルアーを うかせよう。');
-      }
-      if (s.bx <= PIER + 60) recast('ルアーが もどってきたよ。かいしゅうして もういちど なげよう!');
-    };
-
-    const sabikiShakeMode = first => {
-      s.phase = 'mode';
-      s.sub = 'shake';
-      s.restY = s.by;
-      if (first === true) App.say('カゴが たなに ついたよ!\n「しゃくる」で カゴから エサを だして、さかなを あつめよう。ワイプを みてね!', 'wow');
-      sabikiControls();
-    };
-    const sabikiControls = () => {
-      App.setControls(App.btn(`〽️ しゃくる <small>のこり ${s.chum}</small>`, { cls: 'big', onClick: sabikiShake }));
-    };
-    const sabikiShake = () => {
-      if (s.phase !== 'mode' || s.sub !== 'shake' || s.chum <= 0) return;
-      s.chum--;
-      s.by = s.restY - 16;
-      s.shakeUntil = s.t + 0.3;
-      chumBurst(s.bx, s.restY);
-      Sfx.tone(500, 0.1, 'triangle', 0.12);
-      sabikiControls();
-      const r = s.round;
-      if (Math.random() < 0.45 + 0.1 * (5 - s.chum)) {
-        App.after(600 + Math.random() * 900, () => { if (s.round === r && s.phase === 'mode') biteSeq(sabikiResume); });
+      if (!isDrop && s.bx <= PIER + 60) {
+        recast(MODE === 'lure' ? 'ルアーが もどってきたよ。かいしゅうして もういちど なげよう!' : 'しかけが てまえまで もどってきたよ。もういちど なげよう!');
         return;
       }
-      if (s.chum <= 0) {
-        App.after(1400, () => {
-          if (s.round !== r || s.phase !== 'mode') return;
-          s.sub = 'empty';
-          App.say('カゴの エサが なくなった!\nすぐ まきあげて、エサを つめなおそう。', 'think');
-          App.setControls(holdCtl('🔄 まきあげる'));
-        });
+      if (MODE === 'sabiki') modeControls();
+      judge(kind);
+    };
+
+    const judge = kind => {
+      if (s.fishSt !== 'near') {
+        if (MODE === 'saguri' && !holes[s.hole].fish && ++s.miss >= 4) hintOnce('hole' + s.hole, 'この あなには いないみたい。\nとなりの あなを さぐってみよう!');
+        return;
+      }
+      if (kind === s.want) good(); else bad();
+    };
+    const good = () => {
+      s.score++;
+      wText('♪', s.tgtPos.x, s.tgtPos.y - 18, 'small');
+      Sfx.tone(700 + s.score * 120, 0.12, 'triangle', 0.15);
+      if (s.score >= s.need) {
+        s.fishSt = 'biting';
+        tgtBubble.innerHTML = '';
+        biteSeq(() => { App.say('また さそおう!'); newTarget(1.5); s.phase = 'mode'; modeControls(); });
+      } else {
+        pickWant();
       }
     };
-    const sabikiResume = () => {
-      s.phase = 'mode';
-      if (s.chum > 0) { s.sub = 'shake'; s.restY = s.by; App.say('また しゃくって さそおう!'); sabikiControls(); }
-      else { s.sub = 'empty'; App.say('カゴの エサが なくなった! まきあげて つめなおそう。', 'think'); App.setControls(holdCtl('🔄 まきあげる')); }
-    };
-    const updateSabiki = dt => {
-      if (s.sub === 'shake') {
-        s.by += (s.restY - s.by) * Math.min(1, dt * 6);
-      } else if (s.sub === 'empty' && s.hold) {
-        s.by -= 80 * dt;
-        if (Math.random() < dt * 6) Sfx.reel();
-        if (s.by <= WATER) {
-          s.by = WATER;
-          s.sub = 'refill';
-          s.hold = false;
-          App.say('あがってきた! コマセカゴに アミエビを つめよう。');
-          App.setControls(App.btn('🥄 エサを つめる', {
-            cls: 'big pulse',
-            onClick: () => {
-              s.chum = 5;
-              Sfx.pop();
-              App.setControls();
-              s.phase = 'redrop';
-              App.say('つめたよ! もういちど ベールを おろして、カゴを たなまで おとそう。', 'wow');
-              reelPanel('down', () => startFall(''));
-            },
-          }));
-        }
+    const bad = () => {
+      s.miss++;
+      s.score = Math.max(0, s.score - 1);
+      s.flinchT = s.t;
+      wText('ぴゅっ', s.tgtPos.x, s.tgtPos.y - 18, 'small');
+      Sfx.oops();
+      if (s.miss >= 3) {
+        s.fishSt = 'away';
+        s.approachT = s.t + 3;
+        tgtBubble.innerHTML = '';
+        App.say(`${s.target.name}が にげちゃった…\n${s.target.name}は ${LIKE[s.want].hint} さかなだよ。つぎは ふきだしを よく みてね。`, 'think');
+        App.after(100, () => newTarget(2));
+      } else {
+        App.say(`${s.target.name}が びっくりしたよ!\nふきだしの ${LIKE[s.want].icon} を みて さそってね。`, 'think');
       }
     };
 
-    const saguriSearch = first => {
-      s.phase = 'mode';
-      s.sub = 'search';
-      s.interest = 0;
-      s.chons = 0;
-      s.need = 2 + Math.floor(Math.random() * 2);
-      if (first === true) App.say('ブラクリが あなの そこに ついたよ!\n「ちょんちょん」で ゆっくり うごかして さそおう。ワイプで あなの なかを みてね。', 'wow');
-      App.setControls(
-        App.btn('〽️ ちょんちょん', { cls: 'big', onClick: saguriChon }),
-        App.btn('➡️ となりの あなへ', { cls: 'blue', onClick: saguriNext }),
-      );
-    };
-    const saguriChon = () => {
-      if (s.phase !== 'mode' || s.sub !== 'search') return;
-      const gap = s.t - s.lastChon;
-      s.lastChon = s.t;
-      s.by = BOTTOM - 30;
-      s.shakeUntil = s.t + 0.2;
-      s.chons++;
-      Sfx.tone(700, 0.05, 'triangle', 0.1);
-      const hole = holes[s.hole];
-      if (gap < 0.7) {
-        s.interest = Math.max(0, s.interest - 1);
-        if (s.chons > 1) App.say('はやすぎ! さかなが びっくりしちゃう。\nゆっくり「ちょん… ちょん…」だよ。', 'think');
-        return;
+    const updateMode = dt => {
+      // しかけの うごき
+      s.bounce *= Math.exp(-dt * (isDrop ? 3 : 6));
+      if (MODE === 'lure') {
+        s.restY += (tana - s.restY) * Math.min(1, dt * 0.5); // ルアーは むれの たなに もどる
       }
-      if (hole.fish) {
-        s.interest++;
-        if (s.interest >= s.need) {
-          const r = s.round;
-          App.after(400 + Math.random() * 600, () => { if (s.round === r && s.phase === 'mode') biteSeq(() => { App.say('また ゆっくり ちょんちょん。'); saguriSearch(); }); });
+      if (MODE === 'saguri') s.restY += (BOTTOM - 14 - s.restY) * Math.min(1, dt * 2);
+      const y = s.restY - s.bounce;
+      if (useBobber) s.baitY = y; else s.by = y;
+
+      if (s.sub === 'empty') { updateSabikiEmpty(dt); return; }
+      if (s.sub === 'move') { updateSaguriMove(dt); return; }
+
+      // さかなの うごき
+      if (s.fishSt === 'away' && s.t >= s.approachT) {
+        if (fishAllowed()) { s.fishSt = 'coming'; s.comeT = s.t; }
+        else if (!isDrop) hintOnce('far', 'ポイントから はなれているみたい。\n「なげなおす」で、とりの いる ところを ねらって なげよう!');
+      } else if (s.fishSt === 'coming' && s.t - s.comeT > 1.4) {
+        s.fishSt = 'near';
+        pickWant();
+        const key = 'like-' + s.target.id;
+        if (!s.hinted[key]) {
+          s.hinted[key] = true;
+          App.say(`${s.target.name}が きたよ! ${s.target.name}は ${LIKE[s.want].hint} さかな。\nふきだしの ${LIKE[s.want].icon} の とおりに さそおう!`, 'wow');
         }
-      } else if (s.chons >= 4) {
-        hintOnce('hole' + s.hole, 'この あなには いないみたい。\nとなりの あなを さぐってみよう!');
+      } else if (s.fishSt === 'near') {
+        if (!fishAllowed()) { s.fishSt = 'away'; s.approachT = s.t + 2; tgtBubble.innerHTML = ''; return; }
+        // じっと まつのが すきな さかな: なにも しないで まつと よろこぶ
+        if (s.want === 'stop' && s.t - Math.max(s.wantT, s.lastAct) > 2) good();
       }
     };
+
+    // サビキ: エサが なくなったら まきあげて つめなおす
+    const sabikiEmpty = () => {
+      s.sub = 'empty';
+      tgtBubble.innerHTML = '';
+      s.fishSt = 'away';
+      App.say('カゴの エサが なくなった!\nすぐ まきあげて、エサを つめなおそう。', 'think');
+      App.setControls(holdCtl('🔄 まきあげる'));
+    };
+    const updateSabikiEmpty = dt => {
+      if (!s.hold) return;
+      s.restY -= 80 * dt;
+      s.by = s.restY;
+      if (Math.random() < dt * 6) Sfx.reel();
+      if (s.restY <= WATER) {
+        s.by = WATER;
+        s.sub = 'refill';
+        s.hold = false;
+        App.say('あがってきた! コマセカゴに アミエビを つめよう。');
+        App.setControls(App.btn('🥄 エサを つめる', {
+          cls: 'big pulse',
+          onClick: () => {
+            s.chum = 5;
+            Sfx.pop();
+            App.setControls();
+            s.phase = 'redrop';
+            App.say('つめたよ! もういちど ベールを おろして、カゴを たなまで おとそう。', 'wow');
+            reelPanel('down', () => startFall(''));
+          },
+        }));
+      }
+    };
+
+    // さぐりづり: となりの あなへ
     const saguriNext = () => {
-      if (s.phase !== 'mode') return;
+      if (s.phase !== 'mode' || s.sub) return;
       s.hole = (s.hole + 1) % holes.length;
       s.bx = holes[s.hole].x;
-      s.by = WATER + 10;
+      s.restY = WATER + 10;
+      s.by = s.restY;
       s.sub = 'move';
+      s.miss = 0;
+      s.fishSt = 'away';
+      tgtBubble.innerHTML = '';
       App.setControls();
       Sfx.pop();
     };
-    const updateSaguri = dt => {
-      if (s.sub === 'move') {
-        s.by = Math.min(BOTTOM - 14, s.by + 80 * dt);
-        if (s.by >= BOTTOM - 14) { App.say(`${s.hole + 1}ばんめの あなに ついたよ。ゆっくり ちょんちょん。`); saguriSearch(); }
-      } else if (s.sub === 'search') {
-        s.by += (BOTTOM - 14 - s.by) * Math.min(1, dt * 5);
+    const updateSaguriMove = dt => {
+      s.restY = Math.min(BOTTOM - 14, s.restY + 80 * dt);
+      s.by = s.restY;
+      if (s.restY >= BOTTOM - 14) {
+        s.sub = '';
+        App.say(`${s.hole + 1}ばんめの あなに ついたよ。ワイプで さかなが いるか みてね。`);
+        newTarget(1);
+        modeControls();
       }
     };
 
-    /* ═════ やりとり（てもと＋ワイプ） ═════ */
+    /* ═════ やりとり: くるくる まく・さおで いなす ═════ */
     const decideCatch = () => {
-      if (Save.total() > 0 && Math.random() < 0.1) return { junk: JUNK[Math.floor(Math.random() * JUNK.length)] };
-      const fish = pickFish();
+      if (Save.total() > 0 && Math.random() < 0.08) return { junk: JUNK[Math.floor(Math.random() * JUNK.length)] };
+      const fish = s.target || pickFish();
       const [lo, hi] = fish.size;
       const bonus = s.q * 0.15 + (s.nice ? 0.12 : 0);
       const raw = lo + (hi - lo) * Math.pow(Math.random(), 1.4);
       const size = Math.min(hi, Math.round(raw * (1 + bonus)));
       const multi = MODE === 'sabiki' ? 1 + (Math.random() < 0.4 ? 1 : 0) + (Math.random() < 0.15 ? 1 : 0) : 1;
       return { fish, size, multi };
+    };
+
+    const runHint = fpLayer.querySelector('.run-hint');
+    const fightControls = () => {
+      const ui = h(`
+        <div class="fight-ui">
+          <div class="reel-status calm">ぐるぐる まわして まこう!</div>
+          <div class="fight-row"><span>いと</span><div class="tbar"><div class="tzone"></div><div class="tfill"></div></div></div>
+          <div class="fight-row"><span>きょり</span><div class="dbar"><span class="d-fish">🐟</span><span class="d-me">🧒</span></div></div>
+        </div>`);
+      s.ui = { status: ui.querySelector('.reel-status'), fill: ui.querySelector('.tfill'), bar: ui.querySelector('.tbar'), dfish: ui.querySelector('.d-fish') };
+      // リールの ハンドルを ゆびで まわす
+      const crank = h(`
+        <div class="crank">
+          <svg viewBox="-60 -60 120 120">
+            <circle r="54" class="crank-ring"/>
+            <circle r="12" fill="#555"/>
+            <g class="crank-arm"><path d="M0 0 L36 0" stroke="#333" stroke-width="10" stroke-linecap="round"/><circle cx="38" cy="0" r="15" class="crank-knob"/></g>
+          </svg>
+          <span class="crank-lbl">↻ ぐるぐる</span>
+        </div>`);
+      const arm = crank.querySelector('.crank-arm');
+      let last = null;
+      const ang = e => { const r = crank.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); };
+      crank.addEventListener('pointerdown', e => { last = ang(e); try { crank.setPointerCapture(e.pointerId); } catch (err) {} });
+      crank.addEventListener('pointermove', e => {
+        if (last === null) return;
+        const a = ang(e);
+        let d = a - last;
+        if (d > Math.PI) d -= 2 * Math.PI;
+        if (d < -Math.PI) d += 2 * Math.PI;
+        last = a;
+        s.crankAcc += d;
+        s.crankAng += d;
+        arm.setAttribute('transform', `rotate(${(s.crankAng * 180 / Math.PI).toFixed(1)})`);
+      });
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => crank.addEventListener(ev, () => { last = null; }));
+      App.setControls(ui, crank);
     };
 
     const hooked = () => {
@@ -969,16 +1044,23 @@ Scenes.fishing = {
       s.tension = 0;
       s.breakT = 0;
       s.baraDone = false;
-      s.struggling = false;
+      s.run = 0;
+      s.runCur = 0;
       s.strugCount = 0;
       s.nextSwitch = s.t + 2.2;
       s.reelStart = s.bx;
       s.reelDepth = useBobber ? s.baitY : s.by;
       s.dip = 0;
+      s.crankAcc = 0;
+      s.crankV = 0;
+      s.crankAng = 0;
+      s.rodLat = 0;
+      s.rodLatCur = 0;
+      tgt.setAttribute('opacity', '0');
+      tgtBubble.innerHTML = '';
       const f = s.catch.fish;
       const sz = (s.catch.size || 20) * (s.catch.multi || 1) ** 0.5;
       s.power = f ? 0.8 + sz / (sz + 30) + (f.rare ? 0.3 : 0) : 1.3;
-      // ワイプに かかった ものを えがく（はりは くちの ところ）
       const sc = f ? 0.2 + sz / 160 : 0.5;
       hookedIn.innerHTML = f
         ? `<g transform="scale(${sc.toFixed(2)})"><svg x="-190" y="-68" width="214" height="136" viewBox="0 0 214 136">${Art.fish(f).replace(/^\s*<svg[^>]*>|<\/svg>\s*$/g, '')}</svg></g>`
@@ -990,38 +1072,27 @@ Scenes.fishing = {
       fpText(s.nice ? 'ナイス あわせ!' : 'かかった!', 430, 110, 'big');
       fpSplash(8);
       App.say((s.nice ? 'ナイス あわせ!\n' : 'かかった!\n')
-        + '「まく」を おしている あいだ いとが まけるよ。\nいとが あかく なったり、さかなが あばれたら、てを はなしてね! きれちゃうよ!', 'wow');
-
-      const ui = h(`
-        <div class="fight-ui">
-          <div class="reel-status calm">おして まこう!</div>
-          <div class="fight-row"><span>いと</span><div class="tbar"><div class="tzone"></div><div class="tfill"></div></div></div>
-          <div class="fight-row"><span>きょり</span><div class="dbar"><span class="d-fish">🐟</span><span class="d-me">🧒</span></div></div>
-        </div>`);
-      s.ui = { status: ui.querySelector('.reel-status'), fill: ui.querySelector('.tfill'), bar: ui.querySelector('.tbar'), dfish: ui.querySelector('.d-fish') };
-      const reelBtn = App.btn('🔄 おして まく', { cls: 'big reel-btn' });
-      const set = v => e => { s.holding = v; reelBtn.classList.toggle('holding', v); if (v) { try { reelBtn.setPointerCapture(e.pointerId); } catch (err) {} } };
-      reelBtn.addEventListener('pointerdown', set(true));
-      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(ev => reelBtn.addEventListener(ev, set(false)));
-      App.setControls(ui, reelBtn);
+        + 'リールの ハンドルを ゆびで ぐるぐる まわして まこう!\nさかなが よこに にげたら、がめんを はんたいに ドラッグして さおを たおそう!', 'wow');
+      fightControls();
     };
 
-    const setStruggle = on => {
-      s.struggling = on;
+    const setRun = on => {
       if (on) {
+        s.run = Math.random() < 0.5 ? -1 : 1;
         s.strugCount++;
-        s.nextSwitch = s.t + (1.2 + Math.random() * 0.8) * Math.min(1.3, s.power);
-        if (s.strugCount <= 2) App.say('あばれてる! てを はなして まって!', 'think');
+        s.nextSwitch = s.t + (1.4 + Math.random() * 0.9) * Math.min(1.3, s.power);
+        if (s.strugCount <= 2) App.say(`さかなが ${s.run > 0 ? 'みぎ' : 'ひだり'}へ にげる!\nがめんを ${s.run > 0 ? 'ひだり' : 'みぎ'}へ ドラッグして、さおを はんたいに たおそう!`, 'think');
         Sfx.splash();
         fpSplash(6);
         if (!s.baraDone && s.strugCount >= 2) {
           s.baraDone = true;
           if (Math.random() < (s.nice ? 0.08 : 0.2)) { App.after(500, () => { if (s.phase === 'reel') barashi(); }); return; }
         }
-        if (s.catch.fish && s.dist < 85 && Math.random() < 0.55) jump();
+        if (s.catch.fish && s.dist < 85 && Math.random() < 0.45) jump();
       } else {
+        s.run = 0;
         s.nextSwitch = s.t + 2.2 + Math.random() * 1.3;
-        if (s.strugCount <= 2) App.say('おとなしく なったよ。いまだ! おして まこう!');
+        if (s.strugCount <= 2) App.say('おとなしく なったよ。いまだ! ぐるぐる まこう!');
       }
     };
 
@@ -1043,66 +1114,150 @@ Scenes.fishing = {
       });
     };
 
-    const landFish = () => {
-      s.phase = 'landed';
-      Sfx.splash();
-      fpSplash(10);
-      hookedG.setAttribute('opacity', '0');
-      fpText(s.catch.junk ? 'あれ?' : 'つれた!', 430, 120, 'big');
-      App.setControls();
-      Save.data.tutorialDone = true;
-      Save.write();
-      App.after(900, () => App.go('caught', s.catch));
-    };
-
     const reelUpdate = dt => {
-      if (s.t >= s.nextSwitch && !s.catch.junk) setStruggle(!s.struggling);
+      if (s.t >= s.nextSwitch && !s.catch.junk) setRun(s.run === 0);
       if (s.phase !== 'reel') return;
-      if (s.holding) {
-        if (s.struggling) s.dist += 4 * dt;
-        else s.dist -= (16 / Math.sqrt(s.power)) * dt;
-        s.tension += (s.struggling ? 90 : 20 + 8 * s.power) * dt;
-        if (Math.random() < dt * 8) Sfx.reel();
+      // ハンドルの まわる はやさ（とけいまわりだけ）
+      const v = s.crankAcc / Math.max(dt, 0.001);
+      s.crankAcc = 0;
+      s.crankV += (v - s.crankV) * Math.min(1, dt * 6);
+      if (s.crankV < -3) hintOnce('ccw', 'ぎゃくまわしだよ! とけいの はりと おなじ むきに まわそう。');
+      const r = Math.max(0, Math.min(1.6, s.crankV / 10));
+      if (r > 0.1 && Math.random() < dt * 8 * r) Sfx.reel();
+      s.rodLatCur += (s.rodLat - s.rodLatCur) * Math.min(1, dt * 8);
+      s.runCur += (s.run - s.runCur) * Math.min(1, dt * 3);
+
+      const running = s.run !== 0;
+      const countered = running && s.rodLatCur * s.run < -0.35;
+      if (running) {
+        if (countered) { s.tension -= 30 * dt; s.dist += 0.5 * dt; s.nextSwitch -= dt * 0.7; } // いなせると はやく おとなしくなる
+        else { s.tension += 28 * dt; s.dist += 5 * dt; }
+        s.tension += 80 * r * dt; // にげている ときに まくと いとが はる
       } else {
-        s.tension -= 55 * dt;
-        if (s.struggling) s.dist += 2 * dt;
+        s.dist -= (16 / Math.sqrt(s.power)) * r * dt;
+        s.tension += (20 + 8 * s.power) * r * dt;
+        if (r < 0.1) s.tension -= 55 * dt;
       }
       s.tension = Math.min(100, Math.max(0, s.tension));
       s.dist = Math.min(100, s.dist);
-      if (s.tension >= 100 && s.holding) {
+      if (s.tension >= 100) {
         s.breakT += dt;
-        if (s.breakT > 0.9) { lineBreak('fight'); return; }
+        if (s.breakT > 0.9) { runHint.hidden = true; lineBreak('fight'); return; }
       } else {
         s.breakT = Math.max(0, s.breakT - dt);
       }
-      if (s.tension > 85 && s.holding && s.t - s.warnT > 2) {
+      if (s.tension > 85 && s.t - s.warnT > 2) {
         s.warnT = s.t;
         Sfx.strain();
         s.ui.bar.classList.remove('flash'); void s.ui.bar.offsetWidth; s.ui.bar.classList.add('flash');
         fpText('きれそう!', 430, 130, 'small');
       }
-      s.bend = 0.1 + s.tension / 400 + (s.struggling ? 0.08 : 0);
+      s.bend = 0.1 + s.tension / 400 + (running ? 0.08 : 0);
 
-      const dangerT = s.tension > 70;
       s.ui.fill.style.width = s.tension + '%';
-      s.ui.fill.classList.toggle('danger', dangerT);
+      s.ui.fill.classList.toggle('danger', s.tension > 70);
       s.ui.dfish.style.left = (s.dist * 0.88) + '%';
       let msg, cls;
-      if (s.tension > 85 && s.holding) { msg = 'きれちゃう! てを はなして!'; cls = 'fight'; }
-      else if (s.struggling) { msg = 'あばれてる! てを はなして!'; cls = 'fight'; }
-      else if (dangerT && s.holding) { msg = 'いとが ピンピン! てを はなそう'; cls = 'fight'; }
-      else { msg = s.holding ? 'いいぞ! まいてる!' : 'おして まこう!'; cls = 'calm'; }
+      if (s.tension > 85) { msg = 'きれちゃう! まわすのを やめて!'; cls = 'fight'; }
+      else if (running && countered) { msg = 'いなせてる! そのまま!'; cls = 'calm'; }
+      else if (running) { msg = `${s.run > 0 ? 'みぎ' : 'ひだり'}へ にげる! さおを はんたいに!`; cls = 'fight'; }
+      else { msg = r > 0.1 ? 'いいぞ! まいてる!' : 'ぐるぐる まわして まこう!'; cls = 'calm'; }
       if (s.ui.status.textContent !== msg) { s.ui.status.textContent = msg; s.ui.status.className = 'reel-status ' + cls; }
+      runHint.hidden = !running;
+      if (running) runHint.textContent = s.run > 0 ? '⬅️ ひだりへ ドラッグ!' : 'みぎへ ドラッグ! ➡️';
+      runHint.classList.toggle('ok', countered);
 
       // さかなが ちかづいて、あさく なってくる
       const k = Math.max(0, s.dist) / 100;
-      const wig = s.struggling ? Math.sin(s.t * 22) * 8 : Math.sin(s.t * 4) * 2;
-      s.bx = PIER + 25 + (s.reelStart - PIER - 25) * k + wig * 0.5;
-      s.by = WATER + 25 + (s.reelDepth - WATER - 25) * k + (s.struggling ? 6 : 0);
+      const wig = running ? Math.sin(s.t * 22) * 6 : Math.sin(s.t * 4) * 2;
+      s.bx = PIER + 25 + (s.reelStart - PIER - 25) * k + wig * 0.5 + s.runCur * 20;
+      s.by = WATER + 25 + (s.reelDepth - WATER - 25) * k + (running ? 6 : 0);
       if (useBobber) s.baitY = s.by;
-      hookedG.setAttribute('transform', `translate(${s.bx.toFixed(1)},${s.by.toFixed(1)}) rotate(${(wig * 2).toFixed(1)})`);
-      if (s.struggling && Math.random() < dt * 3) fpRipple();
-      if (s.dist <= 0) landFish();
+      hookedG.setAttribute('transform', `translate(${s.bx.toFixed(1)},${s.by.toFixed(1)}) rotate(${(wig * 2).toFixed(1)}) scale(${s.runCur < -0.2 ? -1 : 1},1)`);
+      if (running && Math.random() < dt * 3) fpRipple();
+      if (s.dist <= 0) { runHint.hidden = true; startLand(); }
+    };
+
+    // さおを よこに たおす（てもと がめんを よこに ドラッグ）
+    let rodDrag = null;
+    fpLayer.addEventListener('pointerdown', e => { if (s.phase === 'reel') rodDrag = e.clientX; });
+    fpLayer.addEventListener('pointermove', e => {
+      if (rodDrag === null || s.phase !== 'reel') return;
+      s.rodLat = Math.max(-1, Math.min(1, (e.clientX - rodDrag) / ((st.clientWidth || 800) * 0.2)));
+    });
+    ['pointerup', 'pointercancel'].forEach(ev => fpLayer.addEventListener(ev, () => { rodDrag = null; s.rodLat = 0; }));
+
+    /* ═════ とりこみ: ぬきあげ か タモ ═════ */
+    const fpLand = fpSvg.querySelector('#fpLand'), fpNet = fpSvg.querySelector('#fpNet');
+    const landFishPos = () => ({ x: 400 + Math.sin(s.t * 0.9) * 150, y: 372 + Math.sin(s.t * 1.7) * 10 });
+    const startLand = () => {
+      s.phase = 'land';
+      s.bend = 0.18;
+      s.net = null;
+      hookedG.setAttribute('opacity', '0');
+      const f = s.catch.fish;
+      const w = f ? 70 + s.catch.size * 3 : 70;
+      fpLand.innerHTML = f
+        ? `<g class="land-fish"><svg x="${(-w / 2).toFixed(0)}" y="${(-w * 0.32).toFixed(0)}" width="${w.toFixed(0)}" height="${(w * 0.64).toFixed(0)}" viewBox="0 0 214 136">${Art.fish(f).replace(/^\s*<svg[^>]*>|<\/svg>\s*$/g, '')}</svg></g>`
+        : `<g class="land-fish"><text x="0" y="16" text-anchor="middle" font-size="56">${s.catch.junk.icon}</text></g>`;
+      fpSplash(8);
+      const small = !f || s.catch.size <= 25;
+      App.say(`${f ? `${s.catch.size}センチくらいの ${f.name}` : 'なにか'}が あしもとまで きたよ!\nちいさい さかなは「ぬきあげ」、おおきい さかなは「タモ」で すくおう。${small ? '' : '\nこれは おおきいよ!'}`, 'wow');
+      App.setControls(
+        App.btn('🎣 ぬきあげる', { cls: 'big', onClick: nuki }),
+        App.btn('🥅 タモで すくう', { cls: 'big blue', onClick: tamo }),
+      );
+    };
+    const nuki = () => {
+      if (s.phase !== 'land') return;
+      const small = !s.catch.fish || s.catch.size <= 25;
+      if (small || Math.random() < 0.4) { landed2(small ? 'ぬきあげ せいこう!' : 'セーフ! でも おおきい さかなは タモが あんしんだよ。'); return; }
+      // おおきい さかなを ぬきあげると おちる
+      Sfx.oops();
+      fpLand.innerHTML = '';
+      fpSplash(12);
+      fpText('ぼちゃん!', 400, 320, 'big');
+      App.say('おもくて おちちゃった! まだ はりに かかっているよ。\nおおきい さかなは タモで すくおうね。', 'think');
+      s.phase = 'reel';
+      s.dist = 25;
+      s.tension = 30;
+      s.run = 0;
+      hookedG.setAttribute('opacity', '1');
+      fightControls();
+    };
+    const tamo = () => {
+      if (s.phase !== 'land') return;
+      s.phase = 'net';
+      s.net = { x: 220, y: 400 };
+      App.setControls();
+      App.say('タモを ゆびで うごかして、さかなに かぶせよう!\nさかなの ところで ゆびを はなすと すくえるよ。', 'wow');
+    };
+    const toSvg = e => {
+      const pt = fpSvg.createSVGPoint();
+      pt.x = e.clientX; pt.y = e.clientY;
+      return pt.matrixTransform(fpSvg.getScreenCTM().inverse());
+    };
+    fpLayer.addEventListener('pointerdown', e => { if (s.phase === 'net') { const p = toSvg(e); s.net = { x: p.x, y: p.y, drag: true }; } });
+    fpLayer.addEventListener('pointermove', e => { if (s.phase === 'net' && s.net && s.net.drag) { const p = toSvg(e); s.net.x = p.x; s.net.y = p.y; } });
+    fpLayer.addEventListener('pointerup', () => {
+      if (s.phase !== 'net' || !s.net) return;
+      s.net.drag = false;
+      const fp = landFishPos();
+      if (Math.hypot(s.net.x - fp.x, s.net.y - fp.y) < 70) landed2('すくえた! タモいれ せいこう!');
+      else { Sfx.oops(); fpText('おしい!', s.net.x, s.net.y - 40, 'small'); }
+    });
+    const landed2 = msg => {
+      s.phase = 'landed';
+      s.net = null;
+      fpNet.innerHTML = '';
+      Sfx.fanfare();
+      fpText(msg.split('!')[0] + '!', 400, 250, 'big');
+      App.say(msg, 'wow');
+      fpLand.querySelector('.land-fish')?.classList.add('lift');
+      App.setControls();
+      Save.data.tutorialDone = true;
+      Save.write();
+      App.after(1300, () => App.go('caught', s.catch));
     };
 
     /* ═════ えがく ═════ */
@@ -1111,12 +1266,27 @@ Scenes.fishing = {
     const drawFP = () => {
       let b = s.bendCur;
       if (s.t < s.shakeUntil) b += Math.sin(s.t * 45) * 0.05;
-      const tip = { x: 430 + b * 160, y: 110 + b * 330 };
+      const lean = (s.rodLatCur || 0) * 150;
+      const tip = { x: 430 + b * 160 + lean, y: 110 + b * 330 + Math.abs(lean) * 0.2 };
       const mx = (705 + tip.x) / 2 + 10, my = (460 + tip.y) / 2 - 20 + b * 80;
-      fpRod.setAttribute('d', `M705 460 Q${(620 + b * 40).toFixed(1)} ${(330 + b * 60).toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`);
+      fpRod.setAttribute('d', `M705 460 Q${(620 + b * 40 + lean * 0.3).toFixed(1)} ${(330 + b * 60).toFixed(1)} ${mx.toFixed(1)} ${my.toFixed(1)}`);
       fpRodTip.setAttribute('d', `M${mx.toFixed(1)} ${my.toFixed(1)} Q${((tip.x + 560) / 2).toFixed(1)} ${(tip.y + 70 + b * 40).toFixed(1)} ${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`);
       fpRodLine.setAttribute('d', `M604 388 L${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`);
       fpBail.setAttribute('d', s.bailOpen ? 'M-50 -6 Q-30 44 -4 26' : 'M-50 -6 Q-36 -46 -4 -30');
+
+      if (s.phase === 'land' || s.phase === 'net' || s.phase === 'landed') {
+        const fp = landFishPos();
+        const g = fpLand.querySelector('.land-fish');
+        if (g && s.phase !== 'landed') g.setAttribute('transform', `translate(${fp.x.toFixed(1)},${fp.y.toFixed(1)}) rotate(${(Math.sin(s.t * 6) * 8).toFixed(1)})`);
+        fpTarget.innerHTML = '';
+        fpLine.setAttribute('d', `M${tip.x.toFixed(1)} ${tip.y.toFixed(1)} L${fp.x.toFixed(1)} ${(fp.y - 10).toFixed(1)}`);
+        fpNet.innerHTML = s.net
+          ? `<path d="M${(s.net.x - 160).toFixed(1)} 470 L${(s.net.x - 30).toFixed(1)} ${(s.net.y + 10).toFixed(1)}" stroke="#c9a26b" stroke-width="9" stroke-linecap="round"/>
+             <ellipse cx="${s.net.x.toFixed(1)}" cy="${s.net.y.toFixed(1)}" rx="56" ry="26" fill="rgba(255,255,255,.25)" stroke="#555" stroke-width="5"/>
+             <path d="M${(s.net.x - 50).toFixed(1)} ${s.net.y.toFixed(1)} Q${s.net.x.toFixed(1)} ${(s.net.y + 70).toFixed(1)} ${(s.net.x + 50).toFixed(1)} ${s.net.y.toFixed(1)}" stroke="#777" stroke-width="2" fill="none" stroke-dasharray="4 4"/>`
+          : '';
+        return;
+      }
       const p = entry();
       const lying = s.phase === 'fall' && s.baitY < s.fallTo - 4; // エサが しずむまで ウキは ねている
       if (useBobber && s.phase !== 'reel') {
@@ -1159,36 +1329,54 @@ Scenes.fishing = {
       if (s.phase === 'reel') weight.setAttribute('opacity', s.catch && s.catch.fish ? '0' : '1');
       wLine.classList.toggle('taut', s.phase === 'reel' && s.tension > 70);
 
-      // エサを たべる さかなの うごき
-      const eatPos = (x0, y0) => {
-        const e = s.eat;
-        if (!e) return null;
-        const u = Math.min(1, (s.t - e.t0) / 0.9);
-        const side = bait.x > x0 ? -1 : 1;
-        const near = { x: bait.x + side * 16, y: bait.y };
-        let x = x0, y = y0;
-        if (e.mode === 'approach') { x = x0 + (near.x - x0) * u; y = y0 + (near.y - y0) * u; }
-        else if (e.mode === 'peck') { x = near.x - side * Math.abs(Math.sin((s.t - e.t0) * 9)) * 7; y = near.y; }
-        else if (e.mode === 'bite') { x = bait.x + side * 7; y = bait.y + 2; }
-        else if (e.mode === 'leave') { x = near.x + side * 70 * u; y = near.y + 10 * u; }
-        return { x, y, dir: bait.x >= x ? 1 : -1 };
-      };
-      school.forEach((f, i) => {
+      // むれ（かざり）
+      school.forEach(f => {
         const cx = MODE === 'sabiki' ? PIER + 90 : spotX;
-        let x = cx + Math.sin(s.t * 0.6 + f.ph) * (MODE === 'sabiki' ? 45 : 60);
-        let y = (MODE === 'choinage' ? BOTTOM - 12 + f.dy * 0.3 : tana + f.dy) + Math.sin(s.t * 1.3 + f.ph) * 4;
-        let dir = Math.cos(s.t * 0.6 + f.ph) >= 0 ? 1 : -1;
-        if (i === 0) { const e = eatPos(x, y); if (e) ({ x, y, dir } = e); }
+        const x = cx + Math.sin(s.t * 0.6 + f.ph) * (MODE === 'sabiki' ? 45 : 60);
+        const y = (MODE === 'choinage' ? BOTTOM - 12 + f.dy * 0.3 : tana + f.dy) + Math.sin(s.t * 1.3 + f.ph) * 4;
+        const dir = Math.cos(s.t * 0.6 + f.ph) >= 0 ? 1 : -1;
         f.g.setAttribute('transform', `translate(${x.toFixed(1)},${y.toFixed(1)}) scale(${dir},1)`);
-        f.g.setAttribute('opacity', s.phase === 'reel' || s.phase === 'landed' ? '0' : '1');
+        f.g.setAttribute('opacity', s.phase === 'reel' || s.phase === 'land' || s.phase === 'net' || s.phase === 'landed' ? '0' : '0.55');
       });
-      if (MODE === 'saguri') {
-        const e = eatPos(bait.x + 18, BOTTOM - 6);
-        if (e && s.phase === 'bite') {
-          holeFish.setAttribute('opacity', '1');
-          holeFish.setAttribute('transform', `translate(${e.x.toFixed(1)},${e.y.toFixed(1)}) scale(${e.dir},1)`);
-        } else if (s.phase !== 'reel') holeFish.setAttribute('opacity', '0');
+
+      // ねらう さかな: よってくる・ふきだし・つつく・たべる
+      const side = s.side || 1;
+      let want = null, vis = 0;
+      if (s.phase === 'mode' || s.phase === 'bite' || s.phase === 'snag') {
+        const near = { x: bait.x + side * 18, y: bait.y + 1 };
+        let d;
+        if (s.phase === 'bite' && s.eat) {
+          const e = s.eat, u = Math.min(1, (s.t - e.t0) / 0.9);
+          if (e.mode === 'peck') d = { x: near.x - side * Math.abs(Math.sin((s.t - e.t0) * 9)) * 7, y: near.y };
+          else if (e.mode === 'bite') d = { x: bait.x + side * 7, y: bait.y + 2 };
+          else if (e.mode === 'leave') d = { x: near.x + side * 90 * u, y: near.y + 10 * u };
+          else d = near;
+          vis = e.mode === 'leave' ? 1 - u : 1;
+          s.tgtPos = d;
+        } else if (s.fishSt === 'coming' || s.fishSt === 'near' || s.fishSt === 'biting') {
+          d = { x: near.x + Math.sin(s.t * 3) * 3, y: near.y + Math.sin(s.t * 2) * 2 };
+          if (s.t - s.flinchT < 0.5) d.x += side * 28; // びっくりして さがる
+          vis = 1;
+          if (s.fishSt === 'near') want = s.want;
+          s.tgtPos.x += (d.x - s.tgtPos.x) * Math.min(1, dt * 3);
+          s.tgtPos.y += (d.y - s.tgtPos.y) * Math.min(1, dt * 3);
+        } else {
+          d = { x: bait.x + side * 150, y: bait.y + 10 };
+          s.tgtPos.x += (d.x - s.tgtPos.x) * Math.min(1, dt * 1.5);
+          s.tgtPos.y += (d.y - s.tgtPos.y) * Math.min(1, dt * 1.5);
+          vis = Math.max(0, 1 - Math.abs(s.tgtPos.x - bait.x) / 150);
+        }
       }
+      const dir = bait.x >= s.tgtPos.x ? 1 : -1;
+      tgt.setAttribute('transform', `translate(${s.tgtPos.x.toFixed(1)},${s.tgtPos.y.toFixed(1)}) scale(${dir},1)`);
+      tgt.setAttribute('opacity', vis.toFixed(2));
+      tgtBubble.innerHTML = want
+        ? `<g transform="translate(${s.tgtPos.x.toFixed(1)},${(s.tgtPos.y - 30).toFixed(1)})" class="want-bubble">
+             <ellipse rx="22" ry="17" fill="#fff" stroke="#ffb300" stroke-width="2.5"/><path d="M-5 15 L0 25 L6 15 Z" fill="#fff"/>
+             <text y="8" text-anchor="middle" font-size="22">${LIKE[want].icon}</text></g>`
+        : '';
+      wantBadge.hidden = !want;
+      if (want) wantBadge.textContent = `💭 ${LIKE[want].icon} ${LIKE[want].label}`;
       depthEl.textContent = `ふかさ ${depthM(bait.y)}m`;
     };
 
@@ -1199,9 +1387,8 @@ Scenes.fishing = {
       s.dipCur += (s.dip - s.dipCur) * Math.min(1, dt * 14);
       if (s.phase.startsWith('tp') || s.phase === 'wait-recast') drawTP(dt);
       if (s.phase === 'fall') updateFall(dt);
-      else if (s.phase === 'mode') {
-        if (!useBobber) ({ choinage: updateChoi, lure: updateLure, sabiki: updateSabiki, saguri: updateSaguri }[MODE])(dt);
-      } else if (s.phase === 'reel') reelUpdate(dt);
+      else if (s.phase === 'mode') updateMode(dt);
+      else if (s.phase === 'reel') reelUpdate(dt);
       if (!fpLayer.classList.contains('off')) { drawFP(); drawWipe(dt); }
     });
 

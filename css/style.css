@@ -575,3 +575,19 @@ button { font-family: inherit; font-weight: 800; color: inherit; cursor: pointer
 .hole-eye { animation: blink 3s infinite; }
 @keyframes blink { 0%, 92%, 100% { opacity: 1; } 95% { opacity: 0; } }
 @media (max-width: 600px) { .wipe { width: 64%; } .reel-panel { height: auto; width: 88%; } .reel-svg { width: 100%; height: auto; flex: none; } }
+
+/* ── さそい・くるくる まき・いなす・とりこみ ── */
+.crank { position: relative; width: clamp(110px, 16vw, 140px); aspect-ratio: 1; flex: none; touch-action: none; cursor: grab; }
+.crank svg { width: 100%; height: 100%; display: block; }
+.crank-ring { fill: #fff; stroke: #4a4f57; stroke-width: 6; }
+.crank-knob { fill: var(--orange); stroke: #c0601f; stroke-width: 3; }
+.crank-lbl { position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); font-size: 13px; background: rgba(255,255,255,.9); border-radius: 999px; padding: 0 8px; white-space: nowrap; pointer-events: none; }
+.run-hint { position: absolute; z-index: 4; left: 50%; top: 42%; transform: translateX(-50%); background: var(--red); color: #fff; font-size: clamp(20px, 3.4vw, 32px); padding: 6px 22px; border-radius: 999px; pointer-events: none; animation: pulse .6s infinite; white-space: nowrap; }
+.run-hint.ok { background: var(--green); }
+.run-hint[hidden] { display: none; }
+.want-bubble { animation: bob 1s ease-in-out infinite; }
+.land-fish.lift { animation: liftup 1.2s ease-in forwards; }
+@keyframes liftup { to { transform: translate(400px, 60px) scale(1.4) rotate(-20deg); opacity: 0; } }
+.want-badge { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); background: #fff8e1; border: 2px solid #ffb300; border-radius: 999px; padding: 2px 12px; font-size: clamp(13px, 2vw, 18px); white-space: nowrap; animation: pulse 1s infinite; }
+.want-badge[hidden] { display: none; }
+.wipe .wipe-depth { bottom: auto; top: 4px; }
