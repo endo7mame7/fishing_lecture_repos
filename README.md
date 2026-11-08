@@ -76,6 +76,7 @@ GitHub Pages で公開すれば、URL を開くだけでタブレットからも
 
 ```
 index.html        画面の骨組み
+js/version.js     バージョン番号と更新履歴（タイトル画面の「ver」や ℹ️ から見られる）
 css/style.css     見た目・アニメーション
 js/audio.js       読み上げ（Web Speech API）と効果音（Web Audio API）
 js/data.js        セリフ・クイズ・魚のデータ  ← 内容を変えたいときはここ
@@ -87,6 +88,11 @@ js/fishing.js     つり（三人称でなげる → 手元視点＋ワイプで
 ```
 
 ビルドツールや外部ライブラリは使っていません（フォントのみ Google Fonts）。
+
+## バージョンの上げ方
+
+1. `js/version.js` の `VERSION` を上げ、`HISTORY` の先頭に更新内容を足す
+2. `index.html` の `?v=` を同じ番号にそろえる（ブラウザに古いファイルが残らないようにするため）
 
 ## 内容のカスタマイズ
 

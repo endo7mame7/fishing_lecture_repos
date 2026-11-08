@@ -15,7 +15,9 @@ Scenes.title = {
         <div class="title-fish">
           ${['aji', 'tai', 'saba'].map((id, i) => `<div class="swim swim-${i}">${Art.fish(FISH_BY_ID[id])}</div>`).join('')}
         </div>
+        <button class="ver-chip">ver ${VERSION}</button>
       </div>`;
+    App.stage.querySelector('.ver-chip').addEventListener('click', () => { Sfx.click(); App.go('version'); });
     const again = Loadout.ready()
       ? App.btn('🎣 おなじ どうぐで つる', { cls: 'green', onClick: () => App.go('travel') })
       : null;
@@ -23,7 +25,33 @@ Scenes.title = {
       App.btn('🏪 つりぐやさんへ', { cls: 'big pulse', onClick: () => App.go('shop') }),
       ...(again ? [again] : []),
       App.btn('📖 ずかん', { cls: 'blue', onClick: () => App.go('zukan') }),
+      App.btn('ℹ️', { cls: 'gray', onClick: () => App.go('version') }),
     );
+  },
+};
+
+/* ───────── バージョン じょうほう ───────── */
+Scenes.version = {
+  step: -1,
+  enter() {
+    const cur = HISTORY[0];
+    App.say(`いまの バージョンは ${VERSION} だよ。\nこれまでに ふえた ことを みてみよう。`);
+    App.stage.appendChild(h(`
+      <div class="version">
+        <div class="ver-head">
+          <div class="ver-title">ℹ️ バージョン じょうほう</div>
+          <div class="ver-now">ver <b>${VERSION}</b><span>${cur.date.replace(/-/g, '/')}</span></div>
+        </div>
+        <ul class="ver-list">
+          ${HISTORY.map((v, i) => `
+            <li class="${i === 0 ? 'now' : ''}">
+              <span class="v-no">${v.ver}</span>
+              <span class="v-date">${v.date.replace(/-/g, '/')}</span>
+              <span class="v-text">${v.text}</span>
+            </li>`).join('')}
+        </ul>
+      </div>`));
+    App.setControls(App.btn('🏠 もどる', { cls: 'gray', onClick: () => App.go('title') }));
   },
 };
 
